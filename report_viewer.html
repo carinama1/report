@@ -101,8 +101,43 @@
         details.tx > summary > :nth-child(4) { grid-area: count; text-align: right; font-size: 11px; }
         details.tx > summary > :nth-child(5) { grid-area: total; }
         details.tx .body { padding: 0 14px 14px; }
-        details.tx table { font-size: 12px; }
-        details.tx th, details.tx td { padding: 6px 6px; }
+    }
+
+    /* Stacked card layout for the 7-col items table on narrow screens. */
+    @media (max-width: 700px) {
+        table.items thead { display: none; }
+        table.items, table.items tbody, table.items tr, table.items td {
+            display: block; width: 100%;
+        }
+        table.items tr {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: #fafafa;
+        }
+        table.items td {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; padding: 3px 0; border: 0; text-align: right;
+        }
+        table.items td::before {
+            content: attr(data-label);
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            flex: 0 0 auto;
+        }
+        /* Elevate the item name as the row's title. */
+        table.items td.item-name {
+            display: block; text-align: left;
+            font-weight: 600; font-size: 14px;
+            padding-bottom: 6px; margin-bottom: 6px;
+            border-bottom: 1px dashed var(--line);
+        }
+        table.items td.item-name::before {
+            display: block; margin-bottom: 2px;
+        }
     }
 
     .meta-bar {
@@ -608,16 +643,16 @@
         if (!items.length) return '<div class="muted">Tidak ada item.</div>';
         var body = items.map(function (it) {
             return '<tr>' +
-                '<td>' + escapeHtml(it.kodeitem || '') + '</td>' +
-                '<td>' + escapeHtml(it.namaitem || '') + '</td>' +
-                '<td class="num">' + fmtInt(it.jumlah) + '</td>' +
-                '<td>' + escapeHtml(it.satuan || '') + '</td>' +
-                '<td class="num">' + escapeHtml(fmtRp(it.harga)) + '</td>' +
-                '<td class="num">' + escapeHtml(fmtRp(it.potongan)) + '</td>' +
-                '<td class="num"><strong>' + escapeHtml(fmtRp(it.total)) + '</strong></td>' +
+                '<td data-label="Kode">' + escapeHtml(it.kodeitem || '') + '</td>' +
+                '<td data-label="Nama" class="item-name">' + escapeHtml(it.namaitem || '') + '</td>' +
+                '<td class="num" data-label="Qty">' + fmtInt(it.jumlah) + '</td>' +
+                '<td data-label="Sat">' + escapeHtml(it.satuan || '') + '</td>' +
+                '<td class="num" data-label="Harga">' + escapeHtml(fmtRp(it.harga)) + '</td>' +
+                '<td class="num" data-label="Diskon">' + escapeHtml(fmtRp(it.potongan)) + '</td>' +
+                '<td class="num" data-label="Total"><strong>' + escapeHtml(fmtRp(it.total)) + '</strong></td>' +
             '</tr>';
         }).join('');
-        return '<table>' +
+        return '<table class="items">' +
             '<thead><tr>' +
                 '<th>Kode</th><th>Nama</th><th class="num">Qty</th><th>Sat</th>' +
                 '<th class="num">Harga</th><th class="num">Diskon</th><th class="num">Total</th>' +
