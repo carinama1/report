@@ -201,6 +201,26 @@
         .match-target .mt-summary { grid-template-columns: 1fr; }
     }
 
+    /* Clickable hour rows in the "Penjualan Per Jam" card */
+    table.hourly-table tr.hour-row { cursor: pointer; transition: background .1s; }
+    table.hourly-table tr.hour-row:hover { background: #f9fafb; }
+    table.hourly-table tr.hour-row.active { background: var(--accent-soft); }
+    table.hourly-table tr.hour-row.active td { color: var(--accent); font-weight: 600; }
+
+    /* Hour-filter card inserted below the payment/hourly row */
+    .hour-filter-card { margin-bottom: 20px; border: 1px solid var(--accent); }
+    .hour-filter-header {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .hour-filter-header h2 { color: var(--accent); }
+    .hour-filter-header > div { flex: 1; min-width: 0; }
+    .hour-filter-header button {
+        background: #fff; border: 1px solid var(--line); padding: 6px 12px;
+        border-radius: 8px; cursor: pointer; font: inherit;
+    }
+    .hour-filter-header button:hover { background: #f3f4f6; }
+
     /* All-transactions toggle */
     details.all-tx { background: var(--card); border-radius: 12px;
                      box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 14px;
@@ -388,6 +408,8 @@
         html.push(hourlyCard(data.hourly || []));
         html.push('</div>');
 
+        html.push('<div id="hour-filter-area"></div>');
+
         html.push(topCustomersCard(data.topCustomers || []));
 
         html.push(recordsSection(data.records || []));
@@ -395,6 +417,7 @@
         out.innerHTML = html.join('');
 
         wireMatchTarget(data);
+        wireHourFilter(data.records || []);
 
         var resetBtn = document.getElementById('reset-btn');
         if (resetBtn) resetBtn.addEventListener('click', function () {
@@ -509,6 +532,73 @@
         container.innerHTML = html.join('');
     }
 
+    // ---- Hour-filter: click an hour row in the hourly card to see only those transactions
+    function wireHourFilter(records) {
+        var rows = document.querySelectorAll('tr.hour-row');
+        var currentHour = null;
+        rows.forEach(function (tr) {
+            tr.addEventListener('click', function () {
+                var h = parseInt(tr.getAttribute('data-hour'), 10);
+                if (currentHour === h) {
+                    currentHour = null;
+                    rows.forEach(function (r) { r.classList.remove('active'); });
+                    renderHourFilter(null, records);
+                } else {
+                    currentHour = h;
+                    rows.forEach(function (r) { r.classList.remove('active'); });
+                    tr.classList.add('active');
+                    renderHourFilter(h, records);
+                }
+            });
+        });
+    }
+
+    function renderHourFilter(hour, records) {
+        var area = document.getElementById('hour-filter-area');
+        if (!area) return;
+        if (hour == null) { area.innerHTML = ''; return; }
+
+        var filtered = records.filter(function (rec) {
+            var raw = rec && rec.header && rec.header.tanggal;
+            if (!raw) return false;
+            var d = new Date(raw);
+            if (isNaN(d)) {
+                // fallback: iPOS emits "YYYY-MM-DD HH:MM:SS"; peel the hour manually
+                var m = /T?\s?(\d{2}):\d{2}:\d{2}/.exec(String(raw));
+                return m && parseInt(m[1], 10) === hour;
+            }
+            return d.getHours() === hour;
+        });
+
+        var total = filtered.reduce(function (s, r) {
+            return s + (parseFloat(r.header && r.header.totalakhir) || 0);
+        }, 0);
+
+        var html = '<div class="card hour-filter-card">' +
+            '<div class="hour-filter-header">' +
+                '<h2 style="margin:0;">Transaksi jam ' + pad2(hour) + ':00 – ' + pad2(hour + 1) + ':00 (' + filtered.length + ')</h2>' +
+                '<div class="muted" style="font-size:12px;">Total: <strong>' + escapeHtml(fmtRp(total)) + '</strong></div>' +
+                '<button id="hour-filter-close">Tutup</button>' +
+            '</div>';
+        if (filtered.length === 0) {
+            html += '<div class="muted">Tidak ada transaksi.</div>';
+        } else {
+            html += filtered.map(transactionDetails).join('');
+        }
+        html += '</div>';
+        area.innerHTML = html;
+
+        var closeBtn = document.getElementById('hour-filter-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () {
+            area.innerHTML = '';
+            document.querySelectorAll('tr.hour-row.active').forEach(function (r) {
+                r.classList.remove('active');
+            });
+        });
+
+        area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function wireMatchTarget(data) {
         var input = document.getElementById('mt-input');
         var parsedEl = document.getElementById('mt-parsed');
@@ -576,7 +666,7 @@
         var body = rows.map(function (r) {
             var h = parseInt(r.hour, 10) || 0;
             var pct = max > 0 ? Math.round((r.total / max) * 100) : 0;
-            return '<tr>' +
+            return '<tr class="hour-row" data-hour="' + h + '">' +
                 '<td>' + pad2(h) + ':00 – ' + pad2(h + 1) + ':00</td>' +
                 '<td class="num">' + fmtInt(r.count) + '</td>' +
                 '<td class="num">' + escapeHtml(fmtRp(r.total)) + '</td>' +
@@ -584,7 +674,8 @@
             '</tr>';
         }).join('');
         return '<div class="card"><h2>Penjualan Per Jam</h2>' +
-            '<table><thead><tr><th>Jam</th><th class="num">Trx</th><th class="num">Total</th><th></th></tr></thead>' +
+            '<div class="muted" style="font-size:12px;margin-bottom:6px;">Klik baris jam untuk lihat transaksinya.</div>' +
+            '<table class="hourly-table"><thead><tr><th>Jam</th><th class="num">Trx</th><th class="num">Total</th><th></th></tr></thead>' +
             '<tbody>' + body + '</tbody></table></div>';
     }
 
