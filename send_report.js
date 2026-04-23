@@ -6,7 +6,7 @@
 // ---- DEBUG MODE ----
 // Set to true to print raw SQL, raw output, and skip sending to WhatsApp.
 // Set to false for normal production use.
-var DEBUG = true
+var DEBUG = false
 
 var env = WScript.CreateObject("WScript.Shell").Environment("Process");
 var fso = WScript.CreateObject("Scripting.FileSystemObject");
@@ -356,18 +356,16 @@ try {
     );
     log("hourlyOut raw: [" + hourlyOut + "]");
 
-    // 5. Top 5 customers
-    log("Query 5: top customers");
-    var topOut = runPsqlRetry(
-        "SELECT COALESCE(s.nama, h.kodesupel, 'Umum'), COUNT(*), COALESCE(SUM(h.totalakhir),0) " +
-        "FROM tbl_ikhd h " +
-        "LEFT JOIN tbl_supel s ON s.kode = h.kodesupel " +
-        "WHERE " + DATE_FILTER.replace(/tanggal/g, "h.tanggal") + " " +
-        "AND h.kodesupel IS NOT NULL AND h.kodesupel <> '' " +
-        (USER_FILTER ? "AND " + USER_FILTER.replace(/user1/g, "h.user1") + " " : "") +
-        "GROUP BY s.nama, h.kodesupel ORDER BY 3 DESC LIMIT 5"
+    // 5. Cashier breakdown — ALL users including ADMIN (no USER_FILTER here).
+    //    Split into ADMIN vs non-ADMIN when rendering.
+    log("Query 5: kasir breakdown");
+    var kasirOut = runPsqlRetry(
+        "SELECT COALESCE(NULLIF(user1,''),'-'), COUNT(*), COALESCE(SUM(totalakhir),0) " +
+        "FROM tbl_ikhd " +
+        "WHERE " + DATE_FILTER + " " +
+        "GROUP BY 1 ORDER BY 3 DESC"
     );
-    log("topOut raw: [" + topOut + "]");
+    log("kasirOut raw: [" + kasirOut + "]");
 
     // 6. Full raw records (header + line items) via CSV COPY.
     // This Postgres is 8.4 — no row_to_json/json_agg, so we parse CSV client-side.
@@ -409,10 +407,10 @@ try {
             + ',"count":' + (parseInt(h[1], 10) || 0)
             + ',"total":' + jsonNum(h[2]) + '}';
     });
-    var topJson = rowsToJsonArray(topOut, function (t) {
-        return '{"nama":' + jsonStr(t[0])
-            + ',"count":' + (parseInt(t[1], 10) || 0)
-            + ',"total":' + jsonNum(t[2]) + '}';
+    var kasirJson = rowsToJsonArray(kasirOut, function (k) {
+        return '{"user1":' + jsonStr(k[0])
+            + ',"count":' + (parseInt(k[1], 10) || 0)
+            + ',"total":' + jsonNum(k[2]) + '}';
     });
 
     var jsonOut = "{"
@@ -429,7 +427,7 @@ try {
         + "}"
         + ',"paymentBreakdown":' + paymentJson
         + ',"hourly":' + hourlyJson
-        + ',"topCustomers":' + topJson
+        + ',"kasir":' + kasirJson
         + ',"records":' + (rawRecordsJson || "[]")
         + "}";
 
@@ -509,13 +507,27 @@ try {
         lines.push("");
     }
 
-    if (topOut) {
-        lines.push("*Top Pelanggan*");
-        var topRows = topOut.split("\n");
-        for (var i = 0; i < topRows.length; i++) {
-            if (!topRows[i]) continue;
-            var t = topRows[i].split("|");
-            lines.push((i + 1) + ". " + t[0] + " - " + formatRp(t[2]) + " (" + t[1] + "x)");
+    if (kasirOut) {
+        var kasirRows = kasirOut.split("\n");
+        var adminLines = [];
+        var otherLines = [];
+        for (var i = 0; i < kasirRows.length; i++) {
+            if (!kasirRows[i]) continue;
+            var k = kasirRows[i].split("|");
+            var nama = k[0] || "-";
+            var pad = nama;
+            while (pad.length < 12) pad += " ";
+            var line = pad + ": " + formatRp(k[2]) + " (" + k[1] + "x)";
+            if (nama.toUpperCase() === "ADMIN") adminLines.push(line);
+            else otherLines.push(line);
+        }
+        lines.push("*Kasir*");
+        if (otherLines.length) {
+            for (var oi = 0; oi < otherLines.length; oi++) lines.push(otherLines[oi]);
+        }
+        if (adminLines.length) {
+            if (otherLines.length) lines.push("--- Admin ---");
+            for (var ai = 0; ai < adminLines.length; ai++) lines.push(adminLines[ai]);
         }
         lines.push("");
     }
