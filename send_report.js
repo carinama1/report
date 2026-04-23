@@ -47,6 +47,15 @@ if (/^\d{4}-\d{2}-\d{2}$/.test(REPORT_DATE)) {
         + "AND tanggal < CURRENT_DATE";
 }
 
+// Exclude transactions from ADMIN cashier (user1 is the operator).
+// Override via env EXCLUDE_USER to a different name, or set EXCLUDE_USER=NONE to disable.
+// (env() returns "" for unset vars in WSH, so we default empty -> "ADMIN".)
+var EXCLUDE_USER = trim(env("EXCLUDE_USER") || "ADMIN");
+if (EXCLUDE_USER.toUpperCase() === "NONE") EXCLUDE_USER = "";
+var USER_FILTER = EXCLUDE_USER
+    ? "UPPER(COALESCE(user1,'')) <> '" + EXCLUDE_USER.replace(/'/g, "''").toUpperCase() + "'"
+    : "";
+
 // Build recipients list from WHAPI_TO_1 .. WHAPI_TO_N (set WHAPI_TO_COUNT in config.bat).
 // Falls back to plain WHAPI_TO for backwards compatibility.
 var WHAPI_RECIPIENTS = [];
@@ -283,6 +292,7 @@ function sendWhatsapp(message, to) {
 // ================================================================
 try {
     log("=== iPOS WhatsApp Report START === (DEBUG=" + DEBUG + ")");
+    log("Excluding user1: " + (EXCLUDE_USER || "(none)"));
     dbg("Config: " + DB_USER + "@" + DB_HOST + ":" + DB_PORT + "/" + DB_NAME);
     dbg("PSQL  : " + PSQL);
     dbg("PSQL exists: " + fso.FileExists(PSQL));
@@ -305,7 +315,7 @@ try {
         "COALESCE(SUM(pajak),0), " +
         "COALESCE(SUM(totalakhir),0) " +
         "FROM tbl_ikhd " +
-        "WHERE " + DATE_FILTER
+        "WHERE " + DATE_FILTER + (USER_FILTER ? " AND " + USER_FILTER : "")
     );
     log("sumOut raw: [" + sumOut + "]");
     var sp = sumOut ? sumOut.split("|") : ["0", "0", "0", "0", "0", "0"];
@@ -331,7 +341,7 @@ try {
     var bayarOut = runPsqlRetry(
         "SELECT COALESCE(carabayar,'Lainnya'), COUNT(*), COALESCE(SUM(totalakhir),0) " +
         "FROM tbl_ikhd " +
-        "WHERE " + DATE_FILTER + " " +
+        "WHERE " + DATE_FILTER + (USER_FILTER ? " AND " + USER_FILTER : "") + " " +
         "GROUP BY carabayar ORDER BY 3 DESC"
     );
     log("bayarOut raw: [" + bayarOut + "]");
@@ -341,7 +351,7 @@ try {
     var hourlyOut = runPsqlRetry(
         "SELECT EXTRACT(HOUR FROM tanggal)::int, COUNT(*), COALESCE(SUM(totalakhir),0) " +
         "FROM tbl_ikhd " +
-        "WHERE " + DATE_FILTER + " " +
+        "WHERE " + DATE_FILTER + (USER_FILTER ? " AND " + USER_FILTER : "") + " " +
         "GROUP BY 1 ORDER BY 1"
     );
     log("hourlyOut raw: [" + hourlyOut + "]");
@@ -354,6 +364,7 @@ try {
         "LEFT JOIN tbl_supel s ON s.kode = h.kodesupel " +
         "WHERE " + DATE_FILTER.replace(/tanggal/g, "h.tanggal") + " " +
         "AND h.kodesupel IS NOT NULL AND h.kodesupel <> '' " +
+        (USER_FILTER ? "AND " + USER_FILTER.replace(/user1/g, "h.user1") + " " : "") +
         "GROUP BY s.nama, h.kodesupel ORDER BY 3 DESC LIMIT 5"
     );
     log("topOut raw: [" + topOut + "]");
@@ -363,6 +374,7 @@ try {
     log("Query 6: raw header records (tbl_ikhd)");
     var hdrCsv = runPsqlRetry(
         "COPY (SELECT * FROM tbl_ikhd WHERE " + DATE_FILTER +
+        (USER_FILTER ? " AND " + USER_FILTER : "") +
         " ORDER BY tanggal, notransaksi) TO STDOUT WITH CSV HEADER"
     );
     log("hdrCsv length: " + hdrCsv.length);
@@ -373,6 +385,7 @@ try {
         "JOIN tbl_ikhd h USING (notransaksi) " +
         "LEFT JOIN tbl_item i ON i.kodeitem = d.kodeitem " +
         "WHERE " + DATE_FILTER.replace(/tanggal/g, "h.tanggal") +
+        (USER_FILTER ? " AND " + USER_FILTER.replace(/user1/g, "h.user1") : "") +
         " ORDER BY d.notransaksi, d.nobaris) TO STDOUT WITH CSV HEADER"
     );
     log("dtlCsv length: " + dtlCsv.length);
@@ -531,6 +544,17 @@ try {
         for (var ri = 0; ri < WHAPI_RECIPIENTS.length; ri++) {
             var resp = sendWhatsapp(message, WHAPI_RECIPIENTS[ri]);
             log("Sent to " + WHAPI_RECIPIENTS[ri] + " [" + (ri + 1) + "/" + WHAPI_RECIPIENTS.length + "]. Response: " + resp.substring(0, 80));
+        }
+
+        // Cleanup: remove local JSON now that it's uploaded and sent.
+        // Kept in DEBUG mode so developers can inspect the payload.
+        try {
+            if (fso.FileExists(jsonPath)) {
+                fso.DeleteFile(jsonPath);
+                log("Cleaned up: " + jsonPath);
+            }
+        } catch (eC) {
+            log("Cleanup failed for " + jsonPath + ": " + eC.message);
         }
     }
 
