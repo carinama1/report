@@ -2,276 +2,305 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>iPOS Laporan Penjualan</title>
+<title>Laporan Penjualan</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f5f58">
+<meta name="format-detection" content="telephone=no">
 <style>
+    /* Designed for older shop owners opening the link from WhatsApp on a phone:
+       big text, high contrast, plain Indonesian, one thing per card. */
     :root {
-        --bg: #f4f5f7;
+        --bg: #f3f1ec;
         --card: #ffffff;
-        --ink: #1f2933;
-        --muted: #6b7280;
-        --line: #e5e7eb;
-        --accent: #0f766e;
-        --accent-soft: #ccfbf1;
-        --warn: #b45309;
-        --good: #047857;
+        --ink: #1a1a1a;
+        --soft: #4a4a4a;
+        --line: #d9d5cc;
+        --brand: #0f5f58;
+        --brand-ink: #ffffff;
+        --brand-soft: #e2f1ee;
+        --good: #116b2f;
+        --good-bg: #e6f4ea;
+        --bad: #a31515;
+        --bad-bg: #fdecea;
+        --warn: #8a4b00;
+        --warn-bg: #fff4e0;
+        --fs: 19px;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
-                 font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    a { color: var(--accent); }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+        font-size: var(--fs); line-height: 1.5;
+    }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    @media (max-width: 600px) {
-        .wrap { padding: 12px; }
-        html, body { font-size: 13px; }
-    }
-    .drop {
-        border: 2px dashed #9ca3af; background: #fff; border-radius: 12px;
-        padding: 40px; text-align: center; color: var(--muted); cursor: pointer;
-        transition: .15s;
-    }
-    .drop.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
-    .drop input[type=file] { display: none; }
-    .drop strong { color: var(--ink); }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 0 16px 48px; }
 
-    header.report {
-        background: var(--card); border-radius: 12px; padding: 24px 28px;
-        box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 20px;
+    /* ---------- top bar ---------- */
+    .topbar {
+        position: sticky; top: 0; z-index: 10;
+        background: var(--brand); color: var(--brand-ink);
+        box-shadow: 0 2px 6px rgba(0,0,0,.15);
     }
-    header.report h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: .2px; }
-    header.report .addr { color: var(--muted); font-size: 13px; }
-    header.report .date { margin-top: 10px; font-weight: 600; color: var(--accent); }
-
-    .grid { display: grid; gap: 16px; }
-    .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-    .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-    @media (max-width: 900px) { .grid.cols-4 { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 760px) { .grid.cols-2 { grid-template-columns: 1fr; } }
-    @media (max-width: 520px) { .grid.cols-4 { grid-template-columns: 1fr; } }
-
-    .card { background: var(--card); border-radius: 12px; padding: 18px 20px;
-            box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase;
-               letter-spacing: .8px; color: var(--muted); font-weight: 600; }
-
-    .kpi .val { font-size: 22px; font-weight: 700; }
-    .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
-    th { font-weight: 600; color: var(--muted); font-size: 12px;
-         text-transform: uppercase; letter-spacing: .5px; }
-    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-    tr:last-child td { border-bottom: 0; }
-
-    .bar { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
-    .bar > span { display: block; height: 100%; background: var(--accent); }
-
-    details.tx { background: var(--card); border-radius: 10px; padding: 0;
-                 box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 10px;
-                 border: 1px solid var(--line); }
-    details.tx > summary {
-        list-style: none; cursor: pointer; padding: 14px 18px;
-        display: grid; grid-template-columns: 1.3fr .7fr .8fr .8fr .6fr; gap: 12px;
-        align-items: center;
-    }
-    details.tx > summary::-webkit-details-marker { display: none; }
-    details.tx > summary::after { content: "▸"; color: var(--muted); margin-left: 6px; }
-    details.tx[open] > summary::after { content: "▾"; }
-    details.tx > summary:hover { background: #fafafa; }
-    details.tx .body { padding: 0 18px 18px; }
-    details.tx .meta { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-    details.tx .tag { display: inline-block; padding: 2px 8px; border-radius: 999px;
-                      background: var(--accent-soft); color: var(--accent);
-                      font-size: 11px; font-weight: 600; }
-
-    @media (max-width: 760px) {
-        details.tx > summary {
-            grid-template-columns: 1fr auto;
-            grid-template-areas:
-                "no   total"
-                "date count"
-                "cust cust";
-            row-gap: 4px;
-        }
-        details.tx > summary > :nth-child(1) { grid-area: no; }
-        details.tx > summary > :nth-child(2) { grid-area: date; font-size: 11px; }
-        details.tx > summary > :nth-child(3) { grid-area: cust; font-size: 11px; }
-        details.tx > summary > :nth-child(4) { grid-area: count; text-align: right; font-size: 11px; }
-        details.tx > summary > :nth-child(5) { grid-area: total; }
-        details.tx .body { padding: 0 14px 14px; }
-    }
-
-    /* Stacked card layout for the 7-col items table on narrow screens. */
-    @media (max-width: 700px) {
-        table.items thead { display: none; }
-        table.items, table.items tbody, table.items tr, table.items td {
-            display: block; width: 100%;
-        }
-        table.items tr {
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            background: #fafafa;
-        }
-        table.items td {
-            display: flex; justify-content: space-between; align-items: baseline;
-            gap: 10px; padding: 3px 0; border: 0; text-align: right;
-        }
-        table.items td::before {
-            content: attr(data-label);
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-            flex: 0 0 auto;
-        }
-        /* Elevate the item name as the row's title. */
-        table.items td.item-name {
-            display: block; text-align: left;
-            font-weight: 600; font-size: 14px;
-            padding-bottom: 6px; margin-bottom: 6px;
-            border-bottom: 1px dashed var(--line);
-        }
-        table.items td.item-name::before {
-            display: block; margin-bottom: 2px;
-        }
-    }
-
-    .meta-bar {
-        display: flex; justify-content: space-between; align-items: center;
-        gap: 10px; flex-wrap: wrap;
-        padding: 10px 16px; background: #eef2ff; border-radius: 10px;
-        margin-bottom: 16px; font-size: 13px; color: #3730a3;
-    }
-    .meta-bar > div:first-child {
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        min-width: 0; flex: 1;
-    }
-    .meta-bar button {
-        background: #fff; border: 1px solid #c7d2fe; color: #3730a3;
-        padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit;
-    }
-    .meta-bar button:hover { background: #eef2ff; }
-
-    .muted { color: var(--muted); }
-    .err { color: #b91c1c; background: #fee2e2; padding: 12px 16px; border-radius: 10px; }
-
-    /* ---- Match-to-Target (Cocokkan ke Laporan) ---- */
-    .match-target { margin-bottom: 20px; }
-    .match-target input[type=text] {
-        width: 100%; padding: 12px 14px;
-        font-family: inherit; font-size: 18px; font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        border: 1px solid var(--line); border-radius: 10px; background: #fafafa;
-    }
-    .match-target input[type=text]:focus {
-        outline: none; border-color: var(--accent); background: #fff;
-    }
-    .match-target .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-    .match-target .mt-summary {
-        display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-        margin-top: 16px;
-    }
-    .match-target .mt-summary .cell {
-        background: #f9fafb; border-radius: 10px; padding: 10px 12px;
-    }
-    .match-target .mt-summary .cell h3 {
-        margin: 0 0 4px; font-size: 11px; text-transform: uppercase;
-        letter-spacing: .5px; color: var(--muted); font-weight: 600;
-    }
-    .match-target .mt-summary .cell .v {
-        font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
-    }
-    .match-target .mt-summary .cell.good .v { color: var(--good); }
-    .match-target .mt-summary .cell.bad  .v { color: #b91c1c; }
-    .match-target .mt-verdict {
-        margin-top: 14px; padding: 12px 14px; border-radius: 10px;
-        background: #f0fdf4; color: #065f46; font-weight: 600;
-    }
-    .match-target .mt-verdict.bad { background: #fef2f2; color: #991b1b; }
-    .match-target .mt-verdict.info { background: #eff6ff; color: #1e3a8a; }
-    .match-target .mt-section-title {
-        margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--muted);
-        text-transform: uppercase; letter-spacing: .5px;
-    }
-    @media (max-width: 520px) {
-        .match-target .mt-summary { grid-template-columns: 1fr; }
-    }
-
-    /* Clickable hour rows in the "Penjualan Per Jam" card */
-    table.hourly-table tr.hour-row { cursor: pointer; transition: background .1s; }
-    table.hourly-table tr.hour-row:hover { background: #f9fafb; }
-    table.hourly-table tr.hour-row.active { background: var(--accent-soft); }
-    table.hourly-table tr.hour-row.active td { color: var(--accent); font-weight: 600; }
-
-    /* Filter card (hour or updated) inserted below the payment/hourly row */
-    .filter-card { margin-bottom: 20px; border: 1px solid var(--accent); }
-    .filter-header {
+    .topbar .in {
+        max-width: 680px; margin: 0 auto; padding: 10px 16px;
         display: flex; align-items: center; gap: 12px;
-        margin-bottom: 10px; flex-wrap: wrap;
     }
-    .filter-header h2 { color: var(--accent); }
-    .filter-header > div { flex: 1; min-width: 0; }
-    .filter-header button {
-        background: #fff; border: 1px solid var(--line); padding: 6px 12px;
-        border-radius: 8px; cursor: pointer; font: inherit;
+    .topbar .store { flex: 1; min-width: 0; }
+    .topbar .store b {
+        display: block; font-size: 1.05em; line-height: 1.25;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .filter-header button:hover { background: #f3f4f6; }
+    .topbar .store span { display: block; font-size: .8em; opacity: .9; }
+    .zoom { display: flex; gap: 6px; flex: 0 0 auto; }
+    .zoom button {
+        min-width: 52px; height: 48px; padding: 0 8px;
+        border: 2px solid rgba(255,255,255,.7); border-radius: 12px;
+        background: transparent; color: #fff; font-weight: 700; line-height: 1;
+    }
+    .zoom button:active { background: rgba(255,255,255,.2); }
+    .zoom .sm { font-size: 17px; }
+    .zoom .lg { font-size: 24px; }
 
-    /* "Transaksi Diupdate" summary card */
-    .updated-card { margin-bottom: 20px; }
-    .updated-card .updated-summary {
-        display: flex; justify-content: space-between; align-items: center;
-        gap: 10px; flex-wrap: wrap;
-        padding: 12px 14px; background: #fff7ed;
-        border: 1px solid #fed7aa; border-radius: 10px;
-        color: #9a3412; font-size: 14px;
+    /* ---------- generic ---------- */
+    .card {
+        background: var(--card); border-radius: 18px; padding: 20px;
+        margin-top: 16px; border: 1px solid var(--line);
     }
-    .updated-card .updated-summary strong { font-size: 18px; }
-    .updated-card .updated-summary button {
-        background: #ea580c; color: #fff; border: 0;
-        padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600;
+    .card > h2 {
+        margin: 0 0 4px; font-size: 1.15em; line-height: 1.3;
+        display: flex; align-items: center; gap: 10px;
     }
-    .updated-card .updated-summary button:hover { background: #c2410c; }
-    .updated-card .updated-summary button.active { background: #7c2d12; }
+    .card > h2 .ico {
+        flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-soft); font-size: 22px;
+    }
+    .card > .lead { margin: 0 0 14px; color: var(--soft); font-size: .9em; }
+    .money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .soft { color: var(--soft); }
+    .big-btn {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        width: 100%; min-height: 60px; padding: 12px 18px;
+        border: 0; border-radius: 14px;
+        background: var(--brand); color: #fff; font-weight: 700; font-size: 1em;
+    }
+    .big-btn.light { background: var(--brand-soft); color: var(--brand); border: 2px solid var(--brand); }
+    .big-btn:active { filter: brightness(.92); }
 
-    /* Mark transactions whose dateupd differs from tanggal */
-    .tag-updated { background: #fed7aa !important; color: #9a3412 !important; }
-    details.tx.tx-updated {
-        border-left: 3px solid #ea580c;
-        background: #fffbf7;
+    /* ---------- hero: today's money ---------- */
+    .hero {
+        background: var(--brand); color: #fff; border: 0;
+        text-align: center; padding: 26px 20px 22px;
     }
-    details.tx.tx-updated > summary:hover { background: #fff7ed; }
-
-    /* All-transactions toggle */
-    details.all-tx { background: var(--card); border-radius: 12px;
-                     box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 14px;
-                     overflow: hidden; }
-    details.all-tx > summary {
-        list-style: none; cursor: pointer; padding: 14px 20px;
-        font-weight: 600; color: var(--accent); display: flex;
-        justify-content: space-between; align-items: center;
+    .hero .day { font-size: 1em; font-weight: 600; opacity: .95; }
+    .hero .label { margin-top: 14px; font-size: .95em; opacity: .9; }
+    .hero .total {
+        font-size: 2.3em; font-size: min(2.3em, 11.5vw); font-weight: 800; line-height: 1.15;
+        margin: 4px 0 18px; letter-spacing: -.5px; word-break: break-word;
     }
-    details.all-tx > summary::-webkit-details-marker { display: none; }
-    details.all-tx > summary::after { content: "▸ tampilkan"; color: var(--muted);
-        font-size: 12px; font-weight: 500; }
-    details.all-tx[open] > summary::after { content: "▾ sembunyikan"; }
-    details.all-tx > summary:hover { background: #fafafa; }
-    details.all-tx .all-tx-body { padding: 0 14px 14px; }
+    .hero .stats { display: flex; gap: 10px; }
+    .hero .stat {
+        flex: 1; background: rgba(255,255,255,.14); border-radius: 14px;
+        padding: 12px 8px;
+    }
+    .hero .stat b { display: block; font-size: 1.6em; line-height: 1.1; }
+    .hero .stat span { font-size: .85em; }
+    .hero .extra { margin-top: 14px; font-size: .85em; opacity: .9; }
 
+    /* ---------- simple list rows (label left, value right) ---------- */
+    .rows { margin: 0; padding: 0; list-style: none; }
+    .rows li {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line);
+    }
+    .rows li:last-child { border-bottom: 0; }
+    .rows .k { min-width: 0; }
+    .rows .k small { display: block; color: var(--soft); font-size: .8em; }
+    .rows .v { font-weight: 700; text-align: right; }
+
+    /* ---------- check the cashier's deposit ---------- */
+    .check label { display: block; font-weight: 700; margin-bottom: 8px; }
+    .rp-input {
+        display: flex; align-items: center;
+        border: 3px solid var(--brand); border-radius: 14px; background: #fff;
+        overflow: hidden;
+    }
+    .rp-input span {
+        padding: 0 4px 0 16px; font-size: 1.3em; font-weight: 700; color: var(--soft);
+    }
+    .rp-input input {
+        flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+        padding: 14px 16px 14px 6px; font-size: 1.5em; font-weight: 800;
+        font-variant-numeric: tabular-nums;
+    }
+    .rp-input:focus-within { box-shadow: 0 0 0 4px rgba(15,95,88,.25); }
+    .check .clear {
+        margin-top: 10px; background: none; border: 0; padding: 8px 0;
+        color: var(--brand); font-weight: 700; text-decoration: underline;
+    }
+    .verdict {
+        margin-top: 16px; border-radius: 16px; padding: 18px;
+        font-size: 1.05em;
+    }
+    .verdict .head { display: flex; gap: 12px; align-items: flex-start; }
+    .verdict .head .mark { font-size: 2em; line-height: 1; flex: 0 0 auto; }
+    .verdict .head b { display: block; font-size: 1.2em; line-height: 1.25; }
+    .verdict.good { background: var(--good-bg); color: var(--good); }
+    .verdict.bad  { background: var(--bad-bg);  color: var(--bad); }
+    .verdict.info { background: var(--warn-bg); color: var(--warn); }
+    .verdict .calc {
+        margin-top: 14px; background: rgba(255,255,255,.7); border-radius: 12px;
+        padding: 4px 14px; color: var(--ink);
+    }
+    .verdict p { margin: 10px 0 0; color: var(--ink); font-size: .9em; }
+
+    /* ---------- bars (hours, payment, items) ---------- */
+    .bars { margin: 0; padding: 0; list-style: none; }
+    .bars li { margin: 0; }
+    .bar-row {
+        display: block; width: 100%; text-align: left;
+        padding: 12px 12px; margin: 0 -12px; width: calc(100% + 24px);
+        background: none; border: 0; border-radius: 12px;
+    }
+    button.bar-row:active, button.bar-row.on { background: var(--brand-soft); }
+    .bar-row .top {
+        display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    }
+    .bar-row .top b { font-weight: 700; }
+    .bar-row .sub { display: block; color: var(--soft); font-size: .85em; }
+    .bar-row .top .sub { display: inline; }
+    .bar-row .track {
+        display: block; margin: 6px 0 4px; height: 14px; border-radius: 7px; background: #ece9e2; overflow: hidden;
+    }
+    .bar-row .track i { display: block; height: 100%; background: var(--brand); border-radius: 7px; }
+    .bar-row .tap { color: var(--brand); font-weight: 700; font-size: .85em; }
+
+    /* ---------- receipts (nota) ---------- */
+    .nota {
+        border: 2px solid var(--line); border-radius: 16px; margin-top: 12px;
+        background: #fff; overflow: hidden;
+    }
+    .nota.edited { border-color: #e0a54a; }
+    .nota > summary {
+        list-style: none; cursor: pointer; padding: 14px 16px;
+        display: flex; align-items: center; gap: 14px;
+    }
+    .nota > summary::-webkit-details-marker { display: none; }
+    .nota .time {
+        flex: 0 0 auto; min-width: 74px; text-align: center;
+        background: var(--brand-soft); color: var(--brand); border-radius: 12px;
+        padding: 8px 6px; font-weight: 800; font-size: 1.05em; line-height: 1.1;
+    }
+    .nota .time small { display: block; font-weight: 600; font-size: .62em; margin-top: 2px; }
+    .nota .what { flex: 1; min-width: 0; }
+    .nota .what .amt { font-size: 1.2em; font-weight: 800; }
+    .nota .what .desc {
+        color: var(--soft); font-size: .85em; line-height: 1.35;
+        overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .nota .chev {
+        flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: #f1efe9; color: var(--brand); transition: transform .15s;
+    }
+    .nota .chev svg { width: 22px; height: 22px; }
+    .nota[open] .chev { transform: rotate(180deg); }
+    .nota[open] > summary { border-bottom: 1px dashed var(--line); }
+    .nota .body { padding: 6px 16px 16px; }
+    .nota .items { margin: 0; padding: 0; list-style: none; }
+    .nota .items li {
+        display: flex; justify-content: space-between; gap: 12px;
+        padding: 10px 0; border-bottom: 1px solid #eeebe4;
+    }
+    .nota .items li:last-child { border-bottom: 0; }
+    .nota .items .nm { font-weight: 600; }
+    .nota .items .qty { display: block; color: var(--soft); font-size: .85em; font-weight: 400; }
+    .nota .sum { margin-top: 8px; background: #f7f5f0; border-radius: 12px; padding: 4px 14px; }
+    .nota .sum li { padding: 8px 0; }
+    .nota .sum li.total { font-size: 1.1em; }
+    .nota .note {
+        margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+        background: var(--warn-bg); color: var(--warn); font-size: .85em;
+    }
+    .nota .ref { margin-top: 10px; color: var(--soft); font-size: .75em; word-break: break-all; }
+    .tag {
+        display: inline-block; vertical-align: middle;
+        padding: 2px 10px; border-radius: 999px; font-size: .7em; font-weight: 700;
+        background: var(--warn-bg); color: var(--warn); margin-left: 6px;
+    }
+
+    .panel-head {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        margin-bottom: 4px;
+    }
+    .close-btn {
+        flex: 0 0 auto; min-height: 48px; padding: 0 16px;
+        border: 2px solid var(--line); border-radius: 12px; background: #fff; font-weight: 700;
+    }
+
+    .ok-line {
+        display: flex; gap: 10px; align-items: center;
+        background: var(--good-bg); color: var(--good); border-radius: 14px; padding: 14px 16px;
+        font-weight: 600;
+    }
+    .warn-line {
+        background: var(--warn-bg); color: var(--warn); border-radius: 14px; padding: 14px 16px;
+        font-weight: 600; margin-bottom: 12px;
+    }
+
+    /* ---------- states ---------- */
+    .state { text-align: center; padding: 48px 20px; }
+    .spinner {
+        width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 50%;
+        border: 6px solid var(--brand-soft); border-top-color: var(--brand);
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state h2 { margin: 0 0 8px; font-size: 1.2em; }
+    .state p { margin: 0 0 18px; color: var(--soft); }
+    .drop {
+        display: block; border: 3px dashed #a8a397; border-radius: 18px; background: #fff;
+        padding: 36px 20px; text-align: center; cursor: pointer;
+    }
+    .drop.drag { border-color: var(--brand); background: var(--brand-soft); }
+    .drop input { display: none; }
+
+    .foot { margin-top: 28px; text-align: center; color: var(--soft); font-size: .8em; }
+    .foot button {
+        margin-top: 12px; background: none; border: 2px solid var(--line); border-radius: 12px;
+        padding: 10px 18px; font-weight: 600; color: var(--soft);
+    }
+
+    @media (max-width: 380px) {
+        .nota .time { min-width: 64px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .spinner { animation-duration: 3s; }
+        .nota .chev { transition: none; }
+    }
     @media print {
+        .topbar, .zoom, .check, .foot button, .close-btn { display: none !important; }
         body { background: #fff; }
-        .wrap { padding: 0; }
-        .drop, .meta-bar, details.tx > summary::after { display: none; }
-        details.tx { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
-        details.tx[open] .body { display: block; }
+        .nota { break-inside: avoid; }
     }
 </style>
 </head>
 <body>
+
+<div class="topbar">
+    <div class="in">
+        <div class="store"><b id="store-name">Laporan Penjualan</b><span id="store-sub">Toko</span></div>
+        <div class="zoom" role="group" aria-label="Ukuran tulisan">
+            <button type="button" class="sm" id="zoom-out" aria-label="Kecilkan tulisan">A&minus;</button>
+            <button type="button" class="lg" id="zoom-in" aria-label="Besarkan tulisan">A+</button>
+        </div>
+    </div>
+</div>
+
 <div class="wrap">
 
 <!-- The JSON can be embedded here for a fully self-contained file.
@@ -279,44 +308,36 @@
      contents of report_<date>.json between the tags below. -->
 <script id="report-data" type="application/json"></script>
 
-<label class="drop" id="drop">
-    <div><strong>Drop a report_*.json file here</strong> or click to pick.</div>
-    <div class="muted" style="margin-top:6px;">Or append <code>#data=&lt;base64&gt;</code> to the URL.</div>
-    <input type="file" id="picker" accept=".json,application/json">
-</label>
-
 <div id="out"></div>
+
+</div>
 
 <script>
 (function () {
-    var drop = document.getElementById('drop');
-    var picker = document.getElementById('picker');
     var out = document.getElementById('out');
 
-    drop.addEventListener('click', function () { picker.click(); });
-    picker.addEventListener('change', function (e) {
-        var f = e.target.files && e.target.files[0];
-        if (f) readFile(f);
-    });
-    ['dragenter', 'dragover'].forEach(function (ev) {
-        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('drag'); });
-    });
-    ['dragleave', 'drop'].forEach(function (ev) {
-        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('drag'); });
-    });
-    drop.addEventListener('drop', function (e) {
-        var f = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f) readFile(f);
-    });
-
-    function readFile(file) {
-        var fr = new FileReader();
-        fr.onload = function () {
-            try { render(JSON.parse(fr.result), file.name); }
-            catch (err) { showError("Gagal membaca JSON: " + err.message); }
-        };
-        fr.readAsText(file);
+    // ---- text size (A- / A+), remembered per phone ----
+    var SIZES = [16, 17, 19, 21, 24, 27];
+    var sizeIdx = 2;
+    try {
+        var savedSize = parseInt(localStorage.getItem('report-font-size'), 10);
+        if (savedSize >= 0 && savedSize < SIZES.length) sizeIdx = savedSize;
+    } catch (e) { }
+    function applySize() {
+        document.documentElement.style.setProperty('--fs', SIZES[sizeIdx] + 'px');
+        document.getElementById('zoom-out').disabled = sizeIdx === 0;
+        document.getElementById('zoom-in').disabled = sizeIdx === SIZES.length - 1;
+        try { localStorage.setItem('report-font-size', String(sizeIdx)); } catch (e) { }
     }
+    document.getElementById('zoom-out').addEventListener('click', function () {
+        if (sizeIdx > 0) { sizeIdx--; applySize(); }
+    });
+    document.getElementById('zoom-in').addEventListener('click', function () {
+        if (sizeIdx < SIZES.length - 1) { sizeIdx++; applySize(); }
+    });
+    applySize();
+
+    // ---- loading sources: ?url=, #data=, embedded, or pick a file ----
 
     // Try ?url=<json-url> — fetches and renders. Returns true if a URL was
     // present (rendering happens asynchronously).
@@ -324,16 +345,18 @@
         var m = /[?&]url=([^&#]+)/.exec(location.search);
         if (!m) return false;
         var u = decodeURIComponent(m[1]);
-        out.innerHTML = '<div class="card muted">Loading ' + escapeHtml(u) + '…</div>';
+        showLoading();
         fetch(u, { cache: 'no-store' })
             .then(function (r) {
-                if (!r.ok) throw new Error("HTTP " + r.status);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.text();
             })
-            .then(function (t) { render(JSON.parse(t), u); })
+            .then(function (t) { render(JSON.parse(t)); })
             .catch(function (e) {
-                showError("Gagal memuat " + u + ": " + e.message +
-                          " (kemungkinan diblokir CORS — coba download & drop file manual)");
+                showError('Laporan tidak bisa dibuka.',
+                    'Periksa sinyal internet, lalu tekan tombol di bawah. ' +
+                    'Kalau masih gagal, buka lagi link dari WhatsApp.',
+                    u + ' — ' + e.message, true);
             });
         return true;
     }
@@ -347,9 +370,9 @@
             var b64 = decodeURIComponent(m[1]).replace(/-/g, '+').replace(/_/g, '/');
             while (b64.length % 4) b64 += '=';
             var str = decodeURIComponent(escape(atob(b64)));
-            render(JSON.parse(str), '(from URL)');
-            return true;
-        } catch (e) { showError("URL #data tidak valid: " + e.message); return true; }
+            render(JSON.parse(str));
+        } catch (e) { showError('Link laporan rusak.', 'Minta kirim ulang link laporannya.', e.message, false); }
+        return true;
     }
 
     // Try inline <script id="report-data">
@@ -357,512 +380,617 @@
         var s = document.getElementById('report-data');
         var txt = (s && s.textContent || '').replace(/^\s+|\s+$/g, '');
         if (!txt) return false;
-        try { render(JSON.parse(txt), '(embedded)'); return true; }
-        catch (e) { showError("Embedded JSON tidak valid: " + e.message); return true; }
+        try { render(JSON.parse(txt)); }
+        catch (e) { showError('Laporan rusak.', 'Minta kirim ulang laporannya.', e.message, false); }
+        return true;
     }
 
-    function showError(msg) { out.innerHTML = '<div class="err">' + escapeHtml(msg) + '</div>'; }
-
-    function fmtRp(n) {
-        var num = Math.round(parseFloat(n) || 0);
-        var sign = num < 0 ? '-' : '';
-        num = Math.abs(num);
-        return sign + 'Rp ' + num.toLocaleString('id-ID');
+    function showLoading() {
+        out.innerHTML = '<div class="card state"><div class="spinner"></div>' +
+            '<h2>Sedang membuka laporan…</h2><p>Mohon tunggu sebentar.</p></div>';
     }
-    function fmtInt(n) { return (parseInt(n, 10) || 0).toLocaleString('id-ID'); }
-    function fmtDate(s) {
-        if (!s) return '';
-        var d = new Date(s);
-        if (isNaN(d)) return s;
-        return d.toLocaleString('id-ID', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+
+    function showError(title, help, detail, canRetry) {
+        out.innerHTML = '<div class="card state">' +
+            '<div style="font-size:48px;line-height:1;margin-bottom:12px;">⚠️</div>' +
+            '<h2>' + esc(title) + '</h2><p>' + esc(help) + '</p>' +
+            (canRetry ? '<button type="button" class="big-btn" id="retry">🔄 Coba Lagi</button>' : '') +
+            (detail ? '<p class="soft" style="margin-top:18px;font-size:.7em;word-break:break-all;">' + esc(detail) + '</p>' : '') +
+        '</div>';
+        var r = document.getElementById('retry');
+        if (r) r.addEventListener('click', function () { location.reload(); });
+    }
+
+    function showPicker() {
+        out.innerHTML = '<div style="margin-top:16px;"><label class="drop" id="drop">' +
+            '<div style="font-size:44px;line-height:1;margin-bottom:10px;">📄</div>' +
+            '<b>Pilih file laporan</b><br><span class="soft">(file report_….json)</span>' +
+            '<input type="file" id="picker" accept=".json,application/json">' +
+        '</label></div>';
+        var drop = document.getElementById('drop');
+        var picker = document.getElementById('picker');
+        picker.addEventListener('change', function (e) {
+            var f = e.target.files && e.target.files[0];
+            if (f) readFile(f);
+        });
+        ['dragenter', 'dragover'].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('drag'); });
+        });
+        ['dragleave', 'drop'].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('drag'); });
+        });
+        drop.addEventListener('drop', function (e) {
+            var f = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) readFile(f);
         });
     }
-    function fmtDateOnly(s) {
-        if (!s) return '';
-        var d = new Date(s);
-        if (isNaN(d)) return s;
-        return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    function readFile(file) {
+        var fr = new FileReader();
+        fr.onload = function () {
+            try { render(JSON.parse(fr.result)); }
+            catch (err) { showError('File ini bukan laporan.', 'Pilih file report_….json yang benar.', err.message, false); }
+        };
+        fr.readAsText(file);
+    }
+
+    // ---- formatting ----
+    var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    var BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+                 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    function num(n) { return parseFloat(n) || 0; }
+    function thousands(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    function fmtRp(n) {
+        var v = Math.round(num(n));
+        return (v < 0 ? '-' : '') + 'Rp ' + thousands(Math.abs(v));
+    }
+    function fmtQty(n) {
+        var v = num(n);
+        return v % 1 === 0 ? thousands(v) : String(v).replace('.', ',');
     }
     function pad2(n) { return n < 10 ? '0' + n : '' + n; }
-    function escapeHtml(s) {
+    function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    function render(data, sourceLabel) {
-        drop.style.display = 'none';
-        var html = [];
-
-        html.push(
-            '<div class="meta-bar">' +
-                '<div>Sumber: <strong>' + escapeHtml(sourceLabel || '') + '</strong>' +
-                    ' · Dibuat: ' + escapeHtml(data.generatedAt || '') + '</div>' +
-                '<div>' +
-                    '<button onclick="window.print()">Print</button> ' +
-                    '<button id="reset-btn">Load lain</button>' +
-                '</div>' +
-            '</div>'
-        );
-
-        var s = data.store || {};
-        html.push(
-            '<header class="report">' +
-                '<h1>' + escapeHtml(s.nama || 'Laporan Penjualan') + '</h1>' +
-                (s.alamat ? '<div class="addr">' + escapeHtml(s.alamat) + '</div>' : '') +
-                '<div class="date">' + escapeHtml(fmtDateOnly(data.reportDate)) + '</div>' +
-            '</header>'
-        );
-
-        var sum = data.summary || {};
-        html.push('<div class="grid cols-4" style="margin-bottom:20px;">');
-        html.push(kpiCard('Total Penjualan', fmtRp(sum.totalAkhir), fmtInt(sum.totalTrx) + ' transaksi'));
-        html.push(kpiCard('Total Item', fmtInt(sum.totalItem), 'item terjual'));
-        html.push(kpiCard('Subtotal', fmtRp(sum.subtotal), 'sebelum diskon/pajak'));
-        html.push(kpiCard('Diskon / Pajak',
-            fmtRp(-(sum.totalDiskon || 0)) + ' / ' + fmtRp(sum.totalPajak),
-            'diskon / pajak'));
-        html.push('</div>');
-
-        html.push(matchTargetCard(data));
-
-        html.push(updatedCard(data));
-
-        html.push('<div class="grid cols-2" style="margin-bottom:20px;">');
-        html.push(paymentCard(data.paymentBreakdown || []));
-        html.push(hourlyCard(data.hourly || []));
-        html.push('</div>');
-
-        html.push('<div id="filter-area"></div>');
-
-        html.push(topCustomersCard(data.topCustomers || []));
-
-        html.push(recordsSection(data.records || []));
-
-        out.innerHTML = html.join('');
-
-        wireMatchTarget(data);
-        wireHourFilter(data.records || []);
-        wireUpdatedFilter(data);
-
-        var resetBtn = document.getElementById('reset-btn');
-        if (resetBtn) resetBtn.addEventListener('click', function () {
-            out.innerHTML = ''; drop.style.display = '';
-            picker.value = ''; location.hash = '';
-        });
+    // iPOS timestamps look like "2026-10-24 09:45:50.283". Parse by hand:
+    // older iPhones can't parse the space-separated form with new Date().
+    function parseTs(s) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(String(s || ''));
+        if (!m) return null;
+        return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+    }
+    function fmtDay(s) {
+        var d = parseTs(s);
+        if (!d) return s || '';
+        return HARI[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    function fmtTime(s) {
+        var d = parseTs(s);
+        return d ? pad2(d.getHours()) + '.' + pad2(d.getMinutes()) : '';
+    }
+    // "Sun Oct 25 09:30:10 UTC+0700 2026" (from WSH JScript) → "25 Oktober 2026, jam 09.30"
+    function fmtGenerated(s) {
+        var m = /(\w{3}) (\d{1,2}) (\d{2}):(\d{2}).* (\d{4})$/.exec(String(s || ''));
+        if (!m) return s || '';
+        var mi = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(m[1]);
+        return m[2] + ' ' + (BULAN[mi] || m[1]) + ' ' + m[5] + ', jam ' + m[3] + '.' + m[4];
+    }
+    function partOfDay(h) {
+        if (h < 11) return 'pagi';
+        if (h < 15) return 'siang';
+        if (h < 18) return 'sore';
+        return 'malam';
     }
 
-    // Sum one column across records[].header; returns number.
-    function sumHeader(records, col) {
+    // ---- per-receipt helpers ----
+    function total(rec) { return num(rec && rec.header && rec.header.totalakhir); }
+    function sumTotals(records) {
         var s = 0;
-        for (var i = 0; i < records.length; i++) {
-            var v = records[i] && records[i].header ? records[i].header[col] : 0;
-            s += parseFloat(v) || 0;
-        }
+        for (var i = 0; i < records.length; i++) s += total(records[i]);
         return s;
     }
 
-    // Build "Cocokkan ke Laporan Karyawan" card.
-    function matchTargetCard(data) {
-        var total = sumHeader(data.records || [], 'totalakhir');
-        window.__matchRecords = data.records || [];
-        window.__matchTotal = total;
-        window.__matchKey = 'match-target:' + (data.reportDate || '');
-        return '<div class="card match-target">' +
-            '<h2>Cocokkan ke Laporan Karyawan</h2>' +
-            '<p class="muted" style="margin:0 0 10px;">Masukkan total yang dilaporkan karyawan. Tools akan "mengangkat" transaksi dari urutan paling akhir ke awal sampai sisa sedekat mungkin dengan angka tersebut.</p>' +
-            '<input type="text" id="mt-input" inputmode="numeric" placeholder="contoh: 26.256.000">' +
-            '<div class="hint" id="mt-parsed"></div>' +
-            '<div id="mt-result"></div>' +
-        '</div>';
+    // potfaktur is a PERCENT in iPOS; potnomfaktur is the rupiah discount.
+    function discountRp(hdr) {
+        if (hdr.potnomfaktur != null && num(hdr.potnomfaktur) !== 0) return num(hdr.potnomfaktur);
+        return Math.round(num(hdr.subtotal) * num(hdr.potfaktur) / 100);
     }
 
-    function parseRp(s) {
-        if (s == null) return 0;
-        var digits = String(s).replace(/[^\d]/g, '');
-        return digits === '' ? NaN : parseFloat(digits);
+    // carabayar is often empty; fall back to which amount column was used.
+    function payMethod(hdr) {
+        if (hdr.carabayar) return hdr.carabayar;
+        if (num(hdr.jmlkk) > 0) return 'Kartu Kredit';
+        if (num(hdr.jmldebit) > 0) return 'Debit / Transfer';
+        if (num(hdr.jmlkredit) > 0) return 'Hutang (bayar nanti)';
+        return 'Tunai';
     }
 
-    // Greedy tail-removal: walk records from last to first, accumulating
-    // "removed" totals until we're as close as possible to (total - target).
-    function computeRemoval(records, target) {
-        var total = sumHeader(records, 'totalakhir');
-        var diff = total - target;
-        if (diff < 0) {
-            return { total: total, target: target, diff: diff,
-                     removed: [], removedSum: 0, remaining: total, overshoot: true };
-        }
-        var removed = [];
-        var removedSum = 0;
-        for (var i = records.length - 1; i >= 0; i--) {
-            var rec = records[i];
-            var amt = parseFloat(rec && rec.header && rec.header.totalakhir) || 0;
-            var newSum = removedSum + amt;
-            if (newSum > diff) {
-                // Overshoots the gap — add only if it lands closer than stopping
-                if (Math.abs(newSum - diff) < Math.abs(removedSum - diff)) {
-                    removed.push(rec);
-                    removedSum = newSum;
-                }
-                break;
-            }
-            removed.push(rec);
-            removedSum = newSum;
-            if (newSum === diff) break;
-        }
-        return { total: total, target: target, diff: diff,
-                 removed: removed, removedSum: removedSum,
-                 remaining: total - removedSum, overshoot: false };
-    }
-
-    function renderMatchResult(result) {
-        var container = document.getElementById('mt-result');
-        if (!container) return;
-        if (result == null) { container.innerHTML = ''; return; }
-
-        var diffFromTarget = result.remaining - result.target;
-        var verdictCls, verdictTxt;
-        if (result.overshoot) {
-            verdictCls = 'info';
-            verdictTxt = 'Laporan karyawan LEBIH BESAR dari total tool (selisih ' + fmtRp(-result.diff) + '). Tidak ada transaksi yang perlu diangkat.';
-        } else if (Math.abs(diffFromTarget) < 1) {
-            verdictCls = '';
-            verdictTxt = '✓ Cocok persis setelah mengangkat ' + result.removed.length + ' transaksi (' + fmtRp(result.removedSum) + ').';
-        } else if (Math.abs(diffFromTarget) <= 10000) {
-            verdictCls = '';
-            verdictTxt = '≈ Hampir cocok. Setelah mengangkat ' + result.removed.length + ' transaksi, sisa ' + fmtRp(result.remaining) + ' (selisih ' + (diffFromTarget >= 0 ? '+' : '-') + fmtRp(Math.abs(diffFromTarget)) + ' dari laporan).';
-        } else {
-            verdictCls = 'bad';
-            verdictTxt = 'Tidak bisa cocok tepat. Sisa ' + fmtRp(result.remaining) + ' (selisih ' + (diffFromTarget >= 0 ? '+' : '-') + fmtRp(Math.abs(diffFromTarget)) + ' dari laporan).';
-        }
-
-        var html = [];
-        html.push(
-            '<div class="mt-summary">' +
-                '<div class="cell"><h3>Total Tool</h3><div class="v">' + escapeHtml(fmtRp(result.total)) + '</div></div>' +
-                '<div class="cell"><h3>Laporan Karyawan</h3><div class="v">' + escapeHtml(fmtRp(result.target)) + '</div></div>' +
-                '<div class="cell ' + (result.overshoot ? 'bad' : 'good') + '"><h3>Selisih (diangkat)</h3><div class="v">' + escapeHtml(fmtRp(result.removedSum)) + '</div></div>' +
-            '</div>'
-        );
-        html.push('<div class="mt-verdict ' + verdictCls + '">' + escapeHtml(verdictTxt) + '</div>');
-
-        if (result.removed.length > 0) {
-            html.push('<div class="mt-section-title">Transaksi yang "diangkat" (' + result.removed.length + ')</div>');
-            // result.removed is in reverse order (last-first); render that way
-            // so the user sees the actual order of removal.
-            result.removed.forEach(function (rec) {
-                html.push(transactionDetails(rec));
-            });
-        }
-
-        container.innerHTML = html.join('');
+    function hourOf(rec) {
+        var d = parseTs(rec && rec.header && rec.header.tanggal);
+        return d ? d.getHours() : -1;
     }
 
     // A transaction is considered "updated" when its dateupd falls in a
     // different minute than its tanggal — i.e. it was saved later than its
     // business time (post-hoc entry or edit).
     function isUpdated(hdr) {
-        if (!hdr) return false;
-        var rawT = hdr.tanggal, rawU = hdr.dateupd;
-        if (!rawT || !rawU) return false;
-        var t = new Date(rawT), u = new Date(rawU);
-        if (isNaN(t) || isNaN(u)) {
-            // fallback: compare first 16 chars ("YYYY-MM-DD HH:MM")
-            return String(rawT).substring(0, 16) !== String(rawU).substring(0, 16);
-        }
+        if (!hdr || !hdr.tanggal || !hdr.dateupd) return false;
+        var t = parseTs(hdr.tanggal), u = parseTs(hdr.dateupd);
+        if (!t || !u) return String(hdr.tanggal).substring(0, 16) !== String(hdr.dateupd).substring(0, 16);
         return Math.floor(t.getTime() / 60000) !== Math.floor(u.getTime() / 60000);
     }
-
-    // Lag in minutes (dateupd − tanggal) — for display.
-    function updatedLagMinutes(hdr) {
-        var t = new Date(hdr.tanggal), u = new Date(hdr.dateupd);
-        if (isNaN(t) || isNaN(u)) return 0;
-        return Math.round((u.getTime() - t.getTime()) / 60000);
+    function lagText(hdr) {
+        var t = parseTs(hdr.tanggal), u = parseTs(hdr.dateupd);
+        if (!t || !u) return '';
+        var min = Math.round((u.getTime() - t.getTime()) / 60000);
+        var a = Math.abs(min);
+        var txt = a >= 1440 ? Math.round(a / 1440) + ' hari' : a >= 60 ? Math.round(a / 60) + ' jam' : a + ' menit';
+        return min < 0 ? txt + ' sebelumnya' : txt + ' kemudian';
     }
 
-    // ---- Unified filter area: hour filter and updated filter share it.
-    function renderFilter(config) {
-        var area = document.getElementById('filter-area');
-        if (!area) return;
-        if (config == null) { area.innerHTML = ''; return; }
+    // ---- main render ----
+    var DATA = null;
 
-        var total = config.records.reduce(function (s, r) {
-            return s + (parseFloat(r.header && r.header.totalakhir) || 0);
-        }, 0);
+    function render(data) {
+        DATA = data;
+        var records = data.records || [];
+        var s = data.store || {};
+        var sum = data.summary || {};
 
-        var html = '<div class="card filter-card">' +
-            '<div class="filter-header">' +
-                '<h2 style="margin:0;">' + escapeHtml(config.title) + ' (' + config.records.length + ')</h2>' +
-                '<div class="muted" style="font-size:12px;">' +
-                    (config.subtitle ? escapeHtml(config.subtitle) + ' · ' : '') +
-                    'Total: <strong>' + escapeHtml(fmtRp(total)) + '</strong>' +
-                '</div>' +
-                '<button id="filter-close">Tutup</button>' +
-            '</div>';
-        if (config.records.length === 0) {
-            html += '<div class="muted">Tidak ada transaksi.</div>';
-        } else {
-            html += config.records.map(transactionDetails).join('');
-        }
-        html += '</div>';
-        area.innerHTML = html;
+        document.getElementById('store-name').textContent = s.nama || 'Laporan Penjualan';
+        document.getElementById('store-sub').textContent = 'Laporan penjualan harian';
+        document.title = (s.nama ? s.nama + ' – ' : '') + 'Laporan ' + fmtDay(data.reportDate);
 
-        var closeBtn = document.getElementById('filter-close');
-        if (closeBtn) closeBtn.addEventListener('click', clearFilter);
+        var html = [];
+        html.push(heroCard(data, records, sum));
+        html.push(checkCard(data, records));
+        html.push(hourlyCard(data.hourly || [], records));
+        html.push('<div id="panel"></div>');
+        html.push(topItemsCard(records));
+        html.push(paymentCard(records, data.paymentBreakdown || []));
+        html.push(editedCard(records));
+        html.push(kasirCard(data.kasir || []));
+        html.push(allNotaCard(records));
+        html.push(
+            '<div class="foot">' +
+                (data.generatedAt ? 'Laporan dibuat otomatis ' + esc(fmtGenerated(data.generatedAt)) : '') +
+                (s.alamat ? '<br>' + esc(s.alamat) : '') +
+                '<br><button type="button" onclick="window.print()">🖨️ Cetak laporan</button>' +
+            '</div>'
+        );
+        out.innerHTML = html.join('');
 
-        area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        wireCheck(data, records);
+        wireHours(records);
+        wireEdited(records);
+        wireAll();
     }
 
-    function clearFilter() {
-        var area = document.getElementById('filter-area');
-        if (area) area.innerHTML = '';
-        document.querySelectorAll('tr.hour-row.active').forEach(function (r) {
-            r.classList.remove('active');
-        });
-        var showUp = document.getElementById('show-updated');
-        if (showUp) showUp.classList.remove('active');
-    }
-
-    // Hour filter: click a row in Penjualan Per Jam.
-    function wireHourFilter(records) {
-        var rows = document.querySelectorAll('tr.hour-row');
-        var currentHour = null;
-        rows.forEach(function (tr) {
-            tr.addEventListener('click', function () {
-                var h = parseInt(tr.getAttribute('data-hour'), 10);
-                clearFilter();
-                if (currentHour === h) { currentHour = null; return; }
-                currentHour = h;
-                tr.classList.add('active');
-                var filtered = records.filter(function (rec) {
-                    var raw = rec && rec.header && rec.header.tanggal;
-                    if (!raw) return false;
-                    var d = new Date(raw);
-                    if (isNaN(d)) {
-                        var m = /T?\s?(\d{2}):\d{2}:\d{2}/.exec(String(raw));
-                        return m && parseInt(m[1], 10) === h;
-                    }
-                    return d.getHours() === h;
-                });
-                renderFilter({
-                    title: 'Transaksi jam ' + pad2(h) + ':00 – ' + pad2(h + 1) + ':00',
-                    records: filtered
-                });
-            });
-        });
-    }
-
-    // Updated-filter: click "Lihat yang diupdate" button.
-    function wireUpdatedFilter(data) {
-        var btn = document.getElementById('show-updated');
-        if (!btn) return;
-        var active = false;
-        btn.addEventListener('click', function () {
-            clearFilter();
-            if (active) { active = false; return; }
-            active = true;
-            btn.classList.add('active');
-            var updated = (data.records || []).filter(function (r) { return isUpdated(r.header); });
-            renderFilter({
-                title: 'Transaksi Diupdate',
-                subtitle: 'dateupd ≠ tanggal (beda menit)',
-                records: updated
-            });
-        });
-    }
-
-    function updatedCard(data) {
-        var recs = data.records || [];
-        if (recs.length === 0) return '';
-        var updatedCount = 0;
-        for (var i = 0; i < recs.length; i++) {
-            if (isUpdated(recs[i].header)) updatedCount++;
-        }
-        var pct = Math.round((updatedCount / recs.length) * 100);
-        var btnHtml = updatedCount > 0
-            ? '<button id="show-updated">Lihat hanya yang diupdate</button>'
-            : '<span class="muted" style="font-size:12px;">Tidak ada yang diupdate.</span>';
-        return '<div class="card updated-card">' +
-            '<h2>Transaksi Diupdate</h2>' +
-            '<p class="muted" style="margin:0 0 10px;">Transaksi di mana <code>dateupd</code> berbeda menit dengan <code>tanggal</code> — biasanya ditambahkan atau diedit belakangan.</p>' +
-            '<div class="updated-summary">' +
-                '<div><strong>' + updatedCount + '</strong> dari ' + recs.length + ' transaksi' +
-                    (updatedCount > 0 ? ' (' + pct + '%)' : '') + '</div>' +
-                btnHtml +
+    function heroCard(data, records, sum) {
+        var trx = records.length || parseInt(sum.totalTrx, 10) || 0;
+        var items = num(sum.totalItem);
+        var totalAkhir = records.length ? sumTotals(records) : num(sum.totalAkhir);
+        var disc = 0;
+        for (var i = 0; i < records.length; i++) disc += discountRp(records[i].header || {});
+        var avg = trx > 0 ? totalAkhir / trx : 0;
+        return '<div class="card hero">' +
+            '<div class="day">📅 ' + esc(fmtDay(data.reportDate)) + '</div>' +
+            '<div class="label">Total uang penjualan</div>' +
+            '<div class="total money">' + esc(fmtRp(totalAkhir)) + '</div>' +
+            '<div class="stats">' +
+                '<div class="stat"><b>' + thousands(trx) + '</b><span>nota / pembeli</span></div>' +
+                '<div class="stat"><b>' + fmtQty(items) + '</b><span>barang terjual</span></div>' +
+            '</div>' +
+            '<div class="extra">Rata-rata ' + esc(fmtRp(avg)) + ' per pembeli' +
+                (disc > 0 ? ' · Potongan harga ' + esc(fmtRp(disc)) : '') +
             '</div>' +
         '</div>';
     }
 
-    function wireMatchTarget(data) {
-        var input = document.getElementById('mt-input');
-        var parsedEl = document.getElementById('mt-parsed');
-        if (!input) return;
+    // ---- "Cek Setoran Kasir": compare what the cashier handed over ----
+    function checkCard(data, records) {
+        if (!records.length) return '';
+        return '<div class="card check">' +
+            '<h2><span class="ico">💵</span>Cek Uang Setoran Kasir</h2>' +
+            '<p class="lead">Ketik jumlah uang yang diserahkan kasir. Nanti langsung kelihatan cocok atau tidak.</p>' +
+            '<label for="mt-input">Uang yang disetor kasir:</label>' +
+            '<div class="rp-input"><span>Rp</span>' +
+                '<input type="text" id="mt-input" inputmode="numeric" autocomplete="off" placeholder="0">' +
+            '</div>' +
+            '<button type="button" class="clear" id="mt-clear" hidden>Hapus angka</button>' +
+            '<div id="mt-result"></div>' +
+        '</div>';
+    }
 
-        var saved;
-        try { saved = localStorage.getItem(window.__matchKey) || ''; } catch (e) { saved = ''; }
+    function parseRp(s) {
+        var digits = String(s == null ? '' : s).replace(/[^\d]/g, '');
+        return digits === '' ? NaN : parseFloat(digits);
+    }
+
+    // Greedy tail-removal: walk records from last to first, accumulating
+    // "removed" totals until we're as close as possible to (total - target).
+    function computeRemoval(records, target) {
+        var tot = sumTotals(records);
+        var diff = tot - target;
+        if (diff < 0) {
+            return { total: tot, target: target, diff: diff,
+                     removed: [], removedSum: 0, remaining: tot, overshoot: true };
+        }
+        var removed = [];
+        var removedSum = 0;
+        for (var i = records.length - 1; i >= 0; i--) {
+            var amt = total(records[i]);
+            var newSum = removedSum + amt;
+            if (newSum > diff) {
+                // Overshoots the gap — add only if it lands closer than stopping
+                if (Math.abs(newSum - diff) < Math.abs(removedSum - diff)) {
+                    removed.push(records[i]);
+                    removedSum = newSum;
+                }
+                break;
+            }
+            removed.push(records[i]);
+            removedSum = newSum;
+            if (newSum === diff) break;
+        }
+        return { total: tot, target: target, diff: diff,
+                 removed: removed, removedSum: removedSum,
+                 remaining: tot - removedSum, overshoot: false };
+    }
+
+    function renderCheck(result) {
+        var box = document.getElementById('mt-result');
+        if (!box) return;
+        if (result == null) { box.innerHTML = ''; return; }
+
+        var calc = '<ul class="rows calc">' +
+            '<li><span class="k">Penjualan tercatat</span><span class="v money">' + esc(fmtRp(result.total)) + '</span></li>' +
+            '<li><span class="k">Uang yang disetor</span><span class="v money">' + esc(fmtRp(result.target)) + '</span></li>' +
+            (Math.abs(result.diff) < 1 ? '' :
+            '<li><span class="k"><b>' + (result.diff >= 0 ? 'Kurang' : 'Lebih') + '</b></span>' +
+                '<span class="v money">' + esc(fmtRp(Math.abs(result.diff))) + '</span></li>') +
+        '</ul>';
+
+        var html;
+        if (Math.abs(result.diff) < 1) {
+            html = '<div class="verdict good"><div class="head"><span class="mark">✅</span>' +
+                '<div><b>Cocok!</b>Uang setoran sama dengan penjualan.</div></div>' + calc + '</div>';
+        } else if (result.overshoot) {
+            html = '<div class="verdict info"><div class="head"><span class="mark">ℹ️</span>' +
+                '<div><b>Uang setoran LEBIH ' + esc(fmtRp(-result.diff)) + '</b>' +
+                'Setoran lebih banyak dari penjualan yang tercatat. Mungkin ada uang lain yang ikut tercampur, ' +
+                'atau ada penjualan yang belum dimasukkan ke kasir.</div></div>' + calc + '</div>';
+        } else {
+            var gap = result.remaining - result.target;
+            var n = result.removed.length;
+            var explain;
+            if (n === 0) {
+                explain = '<p>Selisihnya lebih kecil dari nota terakhir, jadi tidak ada nota yang bisa ditunjuk.</p>';
+            } else if (Math.abs(gap) < 1) {
+                explain = '<p>Selisih ini <b>pas sama</b> dengan <b>' + n + ' nota terakhir</b> ' +
+                    '(jumlahnya ' + esc(fmtRp(result.removedSum)) + '). Nota-nota itu mungkin belum disetor. ' +
+                    'Lihat daftarnya di bawah.</p>';
+            } else {
+                explain = '<p>Selisih ini paling dekat dengan <b>' + n + ' nota terakhir</b> ' +
+                    '(jumlahnya ' + esc(fmtRp(result.removedSum)) + '), tapi tidak pas — masih beda ' +
+                    esc(fmtRp(Math.abs(gap))) + '. Coba cek nota-nota di bawah.</p>';
+            }
+            html = '<div class="verdict bad"><div class="head"><span class="mark">❗</span>' +
+                '<div><b>Uang setoran KURANG ' + esc(fmtRp(result.diff)) + '</b></div></div>' +
+                calc + explain + '</div>';
+            if (n > 0) {
+                html += '<h3 style="margin:18px 0 0;font-size:1em;">Nota yang mungkin belum disetor (' + n + '):</h3>';
+                // result.removed is in reverse order (last first) — the order of removal.
+                for (var i = 0; i < result.removed.length; i++) html += notaHtml(result.removed[i]);
+            }
+        }
+        box.innerHTML = html;
+    }
+
+    function wireCheck(data, records) {
+        var input = document.getElementById('mt-input');
+        var clearBtn = document.getElementById('mt-clear');
+        if (!input) return;
+        var key = 'match-target:' + (data.reportDate || '');
+        var saved = '';
+        try { saved = localStorage.getItem(key) || ''; } catch (e) { }
         if (saved) input.value = saved;
 
         function update() {
-            var raw = input.value;
-            // keep the input pretty-formatted as the user types
-            var n = parseRp(raw);
-            if (!isNaN(n) && raw !== '') {
-                var pretty = n.toLocaleString('id-ID');
-                if (pretty !== raw) {
-                    var caret = input.selectionStart;
-                    var before = raw.length;
+            var n = parseRp(input.value);
+            if (!isNaN(n) && n > 0) {
+                var pretty = thousands(n);
+                if (pretty !== input.value) {
+                    // keep the caret at the same distance from the end while re-grouping
+                    var fromEnd = input.value.length - (input.selectionEnd || input.value.length);
                     input.value = pretty;
-                    var after = pretty.length;
-                    try { input.setSelectionRange(caret + (after - before), caret + (after - before)); } catch (e) { }
+                    var pos = Math.max(0, pretty.length - fromEnd);
+                    try { input.setSelectionRange(pos, pos); } catch (e) { }
                 }
-                parsedEl.textContent = 'Diparse sebagai: ' + fmtRp(n);
-                try { localStorage.setItem(window.__matchKey, input.value); } catch (e) {}
-                renderMatchResult(computeRemoval(window.__matchRecords, n));
+                clearBtn.hidden = false;
+                try { localStorage.setItem(key, input.value); } catch (e) { }
+                renderCheck(computeRemoval(records, n));
             } else {
-                parsedEl.textContent = '';
-                try { localStorage.removeItem(window.__matchKey); } catch (e) {}
-                renderMatchResult(null);
+                if (input.value && isNaN(n)) input.value = '';
+                clearBtn.hidden = !input.value;
+                try { localStorage.removeItem(key); } catch (e) { }
+                renderCheck(null);
             }
         }
-
         input.addEventListener('input', update);
+        clearBtn.addEventListener('click', function () { input.value = ''; update(); input.focus(); });
         if (input.value) update();
     }
 
-    function kpiCard(title, val, sub) {
-        return '<div class="card kpi">' +
-                   '<h2>' + escapeHtml(title) + '</h2>' +
-                   '<div class="val">' + escapeHtml(val) + '</div>' +
-                   '<div class="sub">' + escapeHtml(sub) + '</div>' +
-               '</div>';
-    }
-
-    function paymentCard(rows) {
-        if (!rows.length) return '<div class="card"><h2>Pembayaran</h2><div class="muted">Tidak ada data</div></div>';
-        var total = rows.reduce(function (a, r) { return a + (parseFloat(r.total) || 0); }, 0);
-        var body = rows.map(function (r) {
-            var pct = total > 0 ? Math.round((r.total / total) * 100) : 0;
-            return '<tr>' +
-                '<td>' + escapeHtml(r.carabayar || 'Lainnya') + '</td>' +
-                '<td class="num">' + fmtInt(r.count) + '</td>' +
-                '<td class="num">' + escapeHtml(fmtRp(r.total)) + '</td>' +
-                '<td style="width:120px;"><div class="bar"><span style="width:' + pct + '%"></span></div></td>' +
-            '</tr>';
-        }).join('');
-        return '<div class="card"><h2>Rincian Pembayaran</h2>' +
-            '<table><thead><tr><th>Cara Bayar</th><th class="num">Trx</th><th class="num">Total</th><th></th></tr></thead>' +
-            '<tbody>' + body + '</tbody></table></div>';
-    }
-
-    function hourlyCard(rows) {
-        if (!rows.length) return '<div class="card"><h2>Per Jam</h2><div class="muted">Tidak ada data</div></div>';
-        var max = rows.reduce(function (a, r) { return Math.max(a, parseFloat(r.total) || 0); }, 0);
-        var body = rows.map(function (r) {
-            var h = parseInt(r.hour, 10) || 0;
-            var pct = max > 0 ? Math.round((r.total / max) * 100) : 0;
-            return '<tr class="hour-row" data-hour="' + h + '">' +
-                '<td>' + pad2(h) + ':00 – ' + pad2(h + 1) + ':00</td>' +
-                '<td class="num">' + fmtInt(r.count) + '</td>' +
-                '<td class="num">' + escapeHtml(fmtRp(r.total)) + '</td>' +
-                '<td style="width:120px;"><div class="bar"><span style="width:' + pct + '%"></span></div></td>' +
-            '</tr>';
-        }).join('');
-        return '<div class="card"><h2>Penjualan Per Jam</h2>' +
-            '<div class="muted" style="font-size:12px;margin-bottom:6px;">Klik baris jam untuk lihat transaksinya.</div>' +
-            '<table class="hourly-table"><thead><tr><th>Jam</th><th class="num">Trx</th><th class="num">Total</th><th></th></tr></thead>' +
-            '<tbody>' + body + '</tbody></table></div>';
-    }
-
-    function topCustomersCard(rows) {
+    // ---- sales per hour (tap an hour to see its receipts) ----
+    function hourlyCard(rows, records) {
         if (!rows.length) return '';
-        var body = rows.map(function (r, i) {
-            return '<tr>' +
-                '<td style="width:40px;" class="muted">' + (i + 1) + '</td>' +
-                '<td>' + escapeHtml(r.nama || '-') + '</td>' +
-                '<td class="num">' + fmtInt(r.count) + '</td>' +
-                '<td class="num">' + escapeHtml(fmtRp(r.total)) + '</td>' +
-            '</tr>';
+        var max = 0, best = rows[0];
+        for (var i = 0; i < rows.length; i++) {
+            if (num(rows[i].total) > max) { max = num(rows[i].total); best = rows[i]; }
+        }
+        var bh = parseInt(best.hour, 10) || 0;
+        var list = rows.map(function (r) {
+            var h = parseInt(r.hour, 10) || 0;
+            var pct = max > 0 ? Math.max(2, Math.round(num(r.total) / max * 100)) : 0;
+            return '<li><button type="button" class="bar-row" data-hour="' + h + '">' +
+                '<span class="top"><b>Jam ' + pad2(h) + '.00 – ' + pad2(h + 1) + '.00</b>' +
+                    '<b class="money">' + esc(fmtRp(r.total)) + '</b></span>' +
+                '<span class="track"><i style="width:' + pct + '%"></i></span>' +
+                '<span class="top"><span class="sub">' + thousands(parseInt(r.count, 10) || 0) + ' nota · ' + partOfDay(h) + '</span>' +
+                    '<span class="tap">Lihat ›</span></span>' +
+            '</button></li>';
         }).join('');
-        return '<div class="card" style="margin-bottom:20px;"><h2>Top Pelanggan</h2>' +
-            '<table><thead><tr><th></th><th>Pelanggan</th><th class="num">Trx</th><th class="num">Total</th></tr></thead>' +
-            '<tbody>' + body + '</tbody></table></div>';
+        return '<div class="card">' +
+            '<h2><span class="ico">🕘</span>Penjualan per Jam</h2>' +
+            '<p class="lead">Paling ramai jam ' + pad2(bh) + '.00 – ' + pad2(bh + 1) + '.00. ' +
+                'Tekan salah satu jam untuk melihat notanya.</p>' +
+            '<ul class="bars">' + list + '</ul>' +
+        '</div>';
     }
 
-    function transactionDetails(rec) {
+    // Shows a list of receipts in the panel under the hourly card.
+    function showPanel(title, sub, recs, onClose) {
+        var panel = document.getElementById('panel');
+        var html = '<div class="card" style="border:3px solid var(--brand);">' +
+            '<div class="panel-head"><h2 style="margin:0;font-size:1.1em;">' + esc(title) + '</h2>' +
+                '<button type="button" class="close-btn" id="panel-close">✕ Tutup</button></div>' +
+            '<p class="lead" style="margin:0;">' + esc(sub) + '</p>';
+        html += recs.length ? recs.map(notaHtml).join('') : '<p>Tidak ada nota.</p>';
+        html += '</div>';
+        panel.innerHTML = html;
+        document.getElementById('panel-close').addEventListener('click', function () {
+            hidePanel();
+            if (onClose) onClose();
+        });
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function hidePanel() {
+        var panel = document.getElementById('panel');
+        if (panel) panel.innerHTML = '';
+        var on = document.querySelectorAll('.bar-row.on');
+        for (var i = 0; i < on.length; i++) on[i].classList.remove('on');
+    }
+
+    function wireHours(records) {
+        var btns = document.querySelectorAll('button.bar-row[data-hour]');
+        var current = null;
+        for (var i = 0; i < btns.length; i++) {
+            (function (btn) {
+                btn.addEventListener('click', function () {
+                    var h = parseInt(btn.getAttribute('data-hour'), 10);
+                    hidePanel();
+                    if (current === h) { current = null; return; }
+                    current = h;
+                    btn.classList.add('on');
+                    var recs = records.filter(function (r) { return hourOf(r) === h; });
+                    showPanel('Jam ' + pad2(h) + '.00 – ' + pad2(h + 1) + '.00',
+                        recs.length + ' nota · total ' + fmtRp(sumTotals(recs)), recs,
+                        function () { current = null; btn.focus(); });
+                });
+            })(btns[i]);
+        }
+    }
+
+    // ---- best-selling items (computed from the receipts) ----
+    function topItemsCard(records) {
+        var map = {}, keys = [];
+        for (var i = 0; i < records.length; i++) {
+            var items = records[i].items || [];
+            for (var j = 0; j < items.length; j++) {
+                var it = items[j];
+                var k = it.kodeitem || it.namaitem;
+                if (!map[k]) { map[k] = { name: it.namaitem || it.kodeitem || '-', unit: it.satuan || '', qty: 0, total: 0, n: 0 }; keys.push(k); }
+                map[k].qty += num(it.jumlah);
+                map[k].total += num(it.total);
+                map[k].n++;
+            }
+        }
+        if (!keys.length) return '';
+        var rows = keys.map(function (k) { return map[k]; })
+            .sort(function (a, b) { return b.total - a.total; });
+        var top = rows.slice(0, 5);
+        var max = top[0].total || 1;
+        var list = top.map(function (r, i) {
+            return '<li><div class="bar-row">' +
+                '<span class="top"><b>' + (i + 1) + '. ' + esc(r.name) + '</b><b class="money">' + esc(fmtRp(r.total)) + '</b></span>' +
+                '<span class="track"><i style="width:' + Math.max(2, Math.round(r.total / max * 100)) + '%"></i></span>' +
+                '<span class="sub">' + fmtQty(r.qty) + ' ' + esc(r.unit.toLowerCase()) + ' terjual</span>' +
+            '</div></li>';
+        }).join('');
+        return '<div class="card">' +
+            '<h2><span class="ico">🏆</span>Barang Paling Laku</h2>' +
+            '<p class="lead">5 barang dengan uang penjualan terbesar.</p>' +
+            '<ul class="bars">' + list + '</ul>' +
+        '</div>';
+    }
+
+    // ---- how customers paid ----
+    function paymentCard(records, fallback) {
+        var rows = [];
+        if (records.length) {
+            var map = {};
+            for (var i = 0; i < records.length; i++) {
+                var m = payMethod(records[i].header || {});
+                if (!map[m]) { map[m] = { name: m, count: 0, total: 0 }; rows.push(map[m]); }
+                map[m].count++;
+                map[m].total += total(records[i]);
+            }
+        } else {
+            rows = fallback.map(function (r) { return { name: r.carabayar || 'Lainnya', count: num(r.count), total: num(r.total) }; });
+        }
+        if (!rows.length) return '';
+        rows.sort(function (a, b) { return b.total - a.total; });
+        var icon = function (n) { return /tunai/i.test(n) ? '💵 ' : /hutang/i.test(n) ? '📒 ' : '💳 '; };
+        var list = rows.map(function (r) {
+            return '<li><span class="k">' + icon(r.name) + esc(r.name) + '<small>' + thousands(r.count) + ' nota</small></span>' +
+                '<span class="v money">' + esc(fmtRp(r.total)) + '</span></li>';
+        }).join('');
+        return '<div class="card">' +
+            '<h2><span class="ico">👛</span>Cara Pembeli Membayar</h2>' +
+            '<ul class="rows">' + list + '</ul>' +
+        '</div>';
+    }
+
+    // ---- receipts saved later than their sale time ----
+    function editedCard(records) {
+        if (!records.length) return '';
+        var n = 0;
+        for (var i = 0; i < records.length; i++) if (isUpdated(records[i].header)) n++;
+        var body = n === 0
+            ? '<div class="ok-line"><span style="font-size:1.4em;">✅</span>Aman. Tidak ada nota yang diubah atau dimasukkan belakangan.</div>'
+            : '<div class="warn-line">⚠️ Ada <b>' + n + ' nota</b> yang diubah atau dimasukkan belakangan (tidak langsung saat jual).</div>' +
+              '<button type="button" class="big-btn light" id="show-edited">Lihat ' + n + ' nota tersebut</button>';
+        return '<div class="card">' +
+            '<h2><span class="ico">✏️</span>Nota yang Diubah</h2>' +
+            '<p class="lead">Nota yang disimpan tidak bersamaan dengan waktu jualnya perlu dicek.</p>' +
+            body +
+        '</div>';
+    }
+    function wireEdited(records) {
+        var btn = document.getElementById('show-edited');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            hidePanel();
+            var recs = records.filter(function (r) { return isUpdated(r.header); });
+            showPanel('Nota yang diubah', recs.length + ' nota · total ' + fmtRp(sumTotals(recs)), recs,
+                function () { btn.focus(); });
+        });
+    }
+
+    // ---- cashiers (ADMIN is excluded from the report totals by send_report.js) ----
+    function kasirCard(rows) {
+        if (!rows.length) return '';
+        var staff = [], admin = [];
+        for (var i = 0; i < rows.length; i++) {
+            (String(rows[i].user1 || '').toUpperCase() === 'ADMIN' ? admin : staff).push(rows[i]);
+        }
+        var list = staff.map(function (r) {
+            return '<li><span class="k">👤 ' + esc(r.user1 || '-') + '<small>' + thousands(parseInt(r.count, 10) || 0) + ' nota</small></span>' +
+                '<span class="v money">' + esc(fmtRp(r.total)) + '</span></li>';
+        }).join('');
+        var adminNote = admin.length
+            ? '<p class="soft" style="margin:12px 0 0;font-size:.85em;">Catatan: ' +
+                admin.map(function (r) { return esc(r.user1) + ' (' + (parseInt(r.count, 10) || 0) + ' nota, ' + esc(fmtRp(r.total)) + ')'; }).join(', ') +
+                ' tidak dihitung dalam laporan ini.</p>'
+            : '';
+        if (!staff.length && !admin.length) return '';
+        return '<div class="card">' +
+            '<h2><span class="ico">🧑‍💼</span>Kasir yang Bertugas</h2>' +
+            (list ? '<ul class="rows">' + list + '</ul>' : '') + adminNote +
+        '</div>';
+    }
+
+    // ---- every receipt, behind one big button ----
+    function allNotaCard(records) {
+        if (!records.length) return '';
+        return '<div class="card">' +
+            '<h2><span class="ico">🧾</span>Semua Nota</h2>' +
+            '<p class="lead">Daftar lengkap ' + records.length + ' nota, urut dari pagi sampai malam.</p>' +
+            '<button type="button" class="big-btn light" id="all-toggle" aria-expanded="false">Tampilkan semua nota ▾</button>' +
+            '<div id="all-list" hidden>' + records.map(notaHtml).join('') + '</div>' +
+        '</div>';
+    }
+    function wireAll() {
+        var btn = document.getElementById('all-toggle');
+        var list = document.getElementById('all-list');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            var open = list.hidden;
+            list.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+            btn.textContent = open ? 'Sembunyikan nota ▴' : 'Tampilkan semua nota ▾';
+        });
+    }
+
+    function notaHtml(rec) {
         var hdr = rec.header || {};
         var items = rec.items || [];
         var upd = isUpdated(hdr);
-        var lag = upd ? updatedLagMinutes(hdr) : 0;
-        var lagTxt = '';
-        if (upd) {
-            if (Math.abs(lag) >= 1440) lagTxt = Math.round(lag / 1440) + 'h';
-            else if (Math.abs(lag) >= 60) lagTxt = Math.round(lag / 60) + 'j';
-            else lagTxt = lag + 'm';
+        var h = hourOf(rec);
+        var first = items[0] ? items[0].namaitem || items[0].kodeitem : '';
+        var desc = items.length === 0 ? 'Tidak ada barang'
+            : items.length === 1 ? first
+            : first + ' + ' + (items.length - 1) + ' barang lain';
+        var disc = discountRp(hdr);
+        var paid = num(hdr.jmltunai) + num(hdr.jmldebit) + num(hdr.jmlkk);
+        var change = paid - total(rec);
+
+        var itemRows = items.map(function (it) {
+            var price = num(it.harga);
+            return '<li><span class="nm">' + esc(it.namaitem || it.kodeitem || '-') +
+                    '<span class="qty">' + fmtQty(it.jumlah) + ' ' + esc((it.satuan || '').toLowerCase()) +
+                    ' × ' + esc(fmtRp(price)) +
+                    (num(it.potongan) > 0 ? ' · potongan ' + esc(fmtRp(price * num(it.jumlah) - num(it.total))) : '') +
+                    '</span></span>' +
+                '<span class="money" style="font-weight:700;">' + esc(fmtRp(it.total)) + '</span></li>';
+        }).join('');
+
+        var sumRows = '';
+        if (disc > 0 || num(hdr.pajak) > 0 || num(hdr.biayalain) > 0) {
+            sumRows += '<li><span class="k">Harga barang</span><span class="v money">' + esc(fmtRp(hdr.subtotal)) + '</span></li>';
+            if (disc > 0) sumRows += '<li><span class="k">Potongan harga</span><span class="v money">-' + esc(fmtRp(disc)) + '</span></li>';
+            if (num(hdr.pajak) > 0) sumRows += '<li><span class="k">Pajak</span><span class="v money">' + esc(fmtRp(hdr.pajak)) + '</span></li>';
+            if (num(hdr.biayalain) > 0) sumRows += '<li><span class="k">Biaya lain</span><span class="v money">' + esc(fmtRp(hdr.biayalain)) + '</span></li>';
         }
-        return '<details class="tx' + (upd ? ' tx-updated' : '') + '">' +
+        sumRows += '<li class="total"><span class="k"><b>Total bayar</b></span><span class="v money">' + esc(fmtRp(hdr.totalakhir)) + '</span></li>';
+        if (paid > 0 && change >= 1) {
+            sumRows += '<li><span class="k">Uang diterima</span><span class="v money">' + esc(fmtRp(paid)) + '</span></li>' +
+                       '<li><span class="k">Kembalian</span><span class="v money">' + esc(fmtRp(change)) + '</span></li>';
+        }
+
+        return '<details class="nota' + (upd ? ' edited' : '') + '">' +
             '<summary>' +
-                '<div><strong>' + escapeHtml(hdr.notransaksi || '') + '</strong>' +
-                    (hdr.carabayar ? ' <span class="tag">' + escapeHtml(hdr.carabayar) + '</span>' : '') +
-                    (upd ? ' <span class="tag tag-updated" title="dateupd berbeda dari tanggal">✏ +' + lagTxt + '</span>' : '') +
-                '</div>' +
-                '<div class="muted">' + escapeHtml(fmtDate(hdr.tanggal)) + '</div>' +
-                '<div class="muted">' + escapeHtml(hdr.kodesupel || '') + '</div>' +
-                '<div class="num">' + fmtInt(hdr.totalitem) + ' item</div>' +
-                '<div class="num"><strong>' + escapeHtml(fmtRp(hdr.totalakhir)) + '</strong></div>' +
+                '<span class="time">' + esc(fmtTime(hdr.tanggal)) + '<small>' + (h >= 0 ? partOfDay(h) : '') + '</small></span>' +
+                '<span class="what">' +
+                    '<span class="amt money" style="display:block;">' + esc(fmtRp(hdr.totalakhir)) +
+                        (upd ? '<span class="tag">diubah</span>' : '') + '</span>' +
+                    '<span class="desc">' + esc(desc) + '</span>' +
+                '</span>' +
+                '<span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>' +
             '</summary>' +
             '<div class="body">' +
-                '<div class="meta">' +
-                    'Subtotal ' + escapeHtml(fmtRp(hdr.subtotal)) + ' · ' +
-                    'Diskon ' + escapeHtml(fmtRp(hdr.potfaktur)) + ' · ' +
-                    'Pajak ' + escapeHtml(fmtRp(hdr.pajak)) + ' · ' +
-                    'Kasir ' + escapeHtml(hdr.user1 || '-') +
-                    (upd ? '<br><span style="color:#b45309;">dateupd: ' + escapeHtml(fmtDate(hdr.dateupd)) + ' (selisih ' + lagTxt + ')</span>' : '') +
-                '</div>' +
-                itemsTable(items) +
+                (items.length ? '<ul class="items">' + itemRows + '</ul>' : '<p class="soft">Tidak ada barang.</p>') +
+                '<ul class="rows sum">' + sumRows + '</ul>' +
+                (upd ? '<div class="note">✏️ Nota ini disimpan ' + esc(lagText(hdr)) + ' (jam ' +
+                    esc(fmtTime(hdr.dateupd)) + ', ' + esc(fmtDay(hdr.dateupd)) + ').</div>' : '') +
+                '<div class="ref">Bayar: ' + esc(payMethod(hdr)) +
+                    ' · Kasir: ' + esc(hdr.user1 || '-') +
+                    (hdr.kodesupel && hdr.kodesupel !== 'UMUM' ? ' · Pelanggan: ' + esc(hdr.kodesupel) : '') +
+                    '<br>No. nota: ' + esc(hdr.notransaksi || '-') + '</div>' +
             '</div>' +
         '</details>';
     }
 
-    function recordsSection(records) {
-        if (!records.length) return '';
-        var body = records.map(transactionDetails).join('');
-        return '<details class="all-tx">' +
-            '<summary>' +
-                '<span>Semua Transaksi (' + records.length + ')</span>' +
-            '</summary>' +
-            '<div class="all-tx-body">' + body + '</div>' +
-        '</details>';
-    }
-
-    function itemsTable(items) {
-        if (!items.length) return '<div class="muted">Tidak ada item.</div>';
-        var body = items.map(function (it) {
-            return '<tr>' +
-                '<td data-label="Kode">' + escapeHtml(it.kodeitem || '') + '</td>' +
-                '<td data-label="Nama" class="item-name">' + escapeHtml(it.namaitem || '') + '</td>' +
-                '<td class="num" data-label="Qty">' + fmtInt(it.jumlah) + '</td>' +
-                '<td data-label="Sat">' + escapeHtml(it.satuan || '') + '</td>' +
-                '<td class="num" data-label="Harga">' + escapeHtml(fmtRp(it.harga)) + '</td>' +
-                '<td class="num" data-label="Diskon">' + escapeHtml(fmtRp(it.potongan)) + '</td>' +
-                '<td class="num" data-label="Total"><strong>' + escapeHtml(fmtRp(it.total)) + '</strong></td>' +
-            '</tr>';
-        }).join('');
-        return '<table class="items">' +
-            '<thead><tr>' +
-                '<th>Kode</th><th>Nama</th><th class="num">Qty</th><th>Sat</th>' +
-                '<th class="num">Harga</th><th class="num">Diskon</th><th class="num">Total</th>' +
-            '</tr></thead><tbody>' + body + '</tbody></table>';
-    }
-
-    if (!tryUrl() && !tryHash() && !tryInline()) {
-        // nothing auto-loaded; leave the drop zone visible
-    } else {
-        drop.style.display = 'none';
-    }
+    if (!tryUrl() && !tryHash() && !tryInline()) showPicker();
 })();
 </script>
-</div>
 </body>
 </html>
