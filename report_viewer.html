@@ -124,6 +124,26 @@
     .rows li[hidden] { display: none; }
     .rows.sum-line { margin-top: 8px; border-top: 3px solid var(--line); }
 
+    /* sort buttons (one is always selected) */
+    .seg-label { font-weight: 700; font-size: .9em; margin-bottom: 6px; }
+    .seg { display: flex; gap: 6px; margin-bottom: 6px; }
+    .seg button {
+        flex: 1; min-width: 0; min-height: 52px; padding: 6px 4px;
+        border: 2px solid var(--brand); border-radius: 12px;
+        background: #fff; color: var(--brand); font-weight: 700; font-size: .8em; line-height: 1.2;
+    }
+    .seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+    .seg button[aria-pressed="true"]::before { content: "✓ "; }
+
+    /* While a long list is open, its show/hide button stays on screen. */
+    .card { scroll-margin-top: calc(var(--topbar-h, 68px) + 8px); }
+    #items-toggle[aria-expanded="true"],
+    #all-toggle[aria-expanded="true"] {
+        position: sticky; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
+    #items-toggle[aria-expanded="true"] { bottom: 12px; }
+    #all-toggle[aria-expanded="true"] { top: calc(var(--topbar-h, 68px) + 8px); }
+
     /* ---------- check the cashier's deposit ---------- */
     .check label { display: block; font-weight: 700; margin-bottom: 8px; }
     .rp-input {
@@ -330,7 +350,14 @@
         document.getElementById('zoom-out').disabled = sizeIdx === 0;
         document.getElementById('zoom-in').disabled = sizeIdx === SIZES.length - 1;
         try { localStorage.setItem('report-font-size', String(sizeIdx)); } catch (e) { }
+        measureTopbar();
     }
+    // Sticky buttons and scroll jumps sit just under the top bar, whose height follows the text size.
+    function measureTopbar() {
+        var bar = document.querySelector('.topbar');
+        if (bar) document.documentElement.style.setProperty('--topbar-h', bar.offsetHeight + 'px');
+    }
+    window.addEventListener('resize', measureTopbar);
     document.getElementById('zoom-out').addEventListener('click', function () {
         if (sizeIdx > 0) { sizeIdx--; applySize(); }
     });
@@ -570,7 +597,7 @@
         out.innerHTML = html.join('');
 
         wireCheck(data, records);
-        wireItems();
+        wireItems(records);
         wireHours(records);
         wireEdited(records);
         wireAll();
@@ -822,28 +849,38 @@
         return rows;
     }
 
-    // ---- full list of items sold, A–Z so an item is easy to find ----
+    // ---- full list of items sold, sortable by rupiah, quantity or name ----
     var ITEMS_SHOWN = 10;
+    var ITEM_SORTS = {
+        rp:  { label: 'Rp terbesar', lead: 'urut dari uang penjualan terbesar',
+               cmp: function (a, b) { return b.total - a.total; } },
+        qty: { label: 'Paling banyak', lead: 'urut dari jumlah terjual terbanyak',
+               cmp: function (a, b) { return b.qty - a.qty || b.total - a.total; } },
+        az:  { label: 'A – Z', lead: 'urut sesuai abjad (A–Z)',
+               cmp: function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; } }
+    };
+    var itemSort = 'rp';
+    try { if (ITEM_SORTS[localStorage.getItem('items-sort')]) itemSort = localStorage.getItem('items-sort'); } catch (e) { }
+
     function itemsSoldCard(records) {
         var rows = soldItems(records);
         if (!rows.length) return '';
-        rows.sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
         var sum = 0;
-        var list = rows.map(function (r, i) {
-            sum += r.total;
-            return '<li' + (i >= ITEMS_SHOWN ? ' class="more" hidden' : '') + '>' +
-                '<span class="k">' + esc(r.name) +
-                    '<small>' + fmtQty(r.qty) + ' ' + esc(r.unit.toLowerCase()) +
-                    (r.n > 1 ? ' · di ' + r.n + ' nota' : '') + '</small></span>' +
-                '<span class="v money">' + esc(fmtRp(r.total)) + '</span></li>';
-        }).join('');
+        for (var i = 0; i < rows.length; i++) sum += rows[i].total;
         var extra = rows.length - ITEMS_SHOWN;
         // Item totals are before receipt-level discounts, so they can exceed the day's sales.
         var disc = Math.round(sum - sumTotals(records));
+        var seg = '';
+        for (var k in ITEM_SORTS) {
+            seg += '<button type="button" data-sort="' + k + '" aria-pressed="' + (k === itemSort) + '">' +
+                ITEM_SORTS[k].label + '</button>';
+        }
         return '<div class="card">' +
             '<h2><span class="ico">📦</span>Daftar Barang Terjual</h2>' +
-            '<p class="lead">' + rows.length + ' macam barang, urut sesuai abjad (A–Z).</p>' +
-            '<ul class="rows" id="items-list">' + list + '</ul>' +
+            '<p class="lead" id="items-lead"></p>' +
+            '<div class="seg-label">Urutkan menurut:</div>' +
+            '<div class="seg" role="group" aria-label="Urutkan daftar barang">' + seg + '</div>' +
+            '<ul class="rows" id="items-list"></ul>' +
             (extra > 0 ? '<button type="button" class="big-btn light" id="items-toggle" aria-expanded="false" ' +
                 'style="margin-top:8px;">Tampilkan ' + extra + ' barang lagi ▾</button>' : '') +
             '<ul class="rows sum-line"><li><span class="k"><b>Total harga barang</b>' +
@@ -851,17 +888,56 @@
                 '<span class="v money">' + esc(fmtRp(sum)) + '</span></li></ul>' +
         '</div>';
     }
-    function wireItems() {
+    function wireItems(records) {
+        var listEl = document.getElementById('items-list');
+        if (!listEl) return;
+        var rows = soldItems(records);
         var btn = document.getElementById('items-toggle');
-        if (!btn) return;
-        var label = btn.textContent;
-        btn.addEventListener('click', function () {
-            var open = btn.getAttribute('aria-expanded') !== 'true';
-            var more = document.querySelectorAll('#items-list li.more');
-            for (var i = 0; i < more.length; i++) more[i].hidden = !open;
+        var label = btn ? btn.textContent : '';
+        var open = false;
+
+        function draw() {
+            var mode = ITEM_SORTS[itemSort];
+            rows.sort(mode.cmp);
+            var ranked = itemSort !== 'az';
+            listEl.innerHTML = rows.map(function (r, i) {
+                return '<li' + (i >= ITEMS_SHOWN && !open ? ' hidden' : '') + '>' +
+                    '<span class="k">' + (ranked ? (i + 1) + '. ' : '') + esc(r.name) +
+                        '<small>' + fmtQty(r.qty) + ' ' + esc(r.unit.toLowerCase()) +
+                        (r.n > 1 ? ' · di ' + r.n + ' nota' : '') + '</small></span>' +
+                    '<span class="v money">' + esc(fmtRp(r.total)) + '</span></li>';
+            }).join('');
+            document.getElementById('items-lead').textContent = rows.length + ' macam barang, ' + mode.lead + '.';
+            var segBtns = document.querySelectorAll('.seg button');
+            for (var i = 0; i < segBtns.length; i++) {
+                segBtns[i].setAttribute('aria-pressed', String(segBtns[i].getAttribute('data-sort') === itemSort));
+            }
+        }
+
+        var segBtns = document.querySelectorAll('.seg button');
+        for (var i = 0; i < segBtns.length; i++) {
+            segBtns[i].addEventListener('click', function () {
+                itemSort = this.getAttribute('data-sort');
+                try { localStorage.setItem('items-sort', itemSort); } catch (e) { }
+                draw();
+            });
+        }
+        if (btn) btn.addEventListener('click', function () {
+            open = !open;
+            var lis = listEl.querySelectorAll('li');
+            for (var i = ITEMS_SHOWN; i < lis.length; i++) lis[i].hidden = !open;
             btn.setAttribute('aria-expanded', String(open));
             btn.textContent = open ? 'Sembunyikan ▴' : label;
+            if (!open) backToCard(btn);
         });
+        draw();
+    }
+
+    // After a long list is hidden, bring its card back into view instead of leaving
+    // the reader stranded further down the page.
+    function backToCard(el) {
+        while (el && !(el.classList && el.classList.contains('card'))) el = el.parentNode;
+        if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' });
     }
 
     // ---- best-selling items (computed from the receipts) ----
@@ -980,6 +1056,7 @@
             list.hidden = !open;
             btn.setAttribute('aria-expanded', String(open));
             btn.textContent = open ? 'Sembunyikan nota ▴' : 'Tampilkan semua nota ▾';
+            if (!open) backToCard(btn);
         });
     }
 
