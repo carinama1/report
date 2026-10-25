@@ -121,6 +121,8 @@
     .rows .k { min-width: 0; }
     .rows .k small { display: block; color: var(--soft); font-size: .8em; }
     .rows .v { font-weight: 700; text-align: right; }
+    .rows li[hidden] { display: none; }
+    .rows.sum-line { margin-top: 8px; border-top: 3px solid var(--line); }
 
     /* ---------- check the cashier's deposit ---------- */
     .check label { display: block; font-weight: 700; margin-bottom: 8px; }
@@ -550,6 +552,7 @@
         var html = [];
         html.push(heroCard(data, records, sum));
         html.push(checkCard(data, records));
+        html.push(itemsSoldCard(records));
         html.push(hourlyCard(data.hourly || [], records));
         html.push('<div id="panel"></div>');
         html.push(topItemsCard(records));
@@ -567,6 +570,7 @@
         out.innerHTML = html.join('');
 
         wireCheck(data, records);
+        wireItems();
         wireHours(records);
         wireEdited(records);
         wireAll();
@@ -798,23 +802,73 @@
         }
     }
 
-    // ---- best-selling items (computed from the receipts) ----
-    function topItemsCard(records) {
-        var map = {}, keys = [];
+    // Every item sold today, one row per item + unit, summed across receipts.
+    function soldItems(records) {
+        var map = {}, rows = [];
         for (var i = 0; i < records.length; i++) {
             var items = records[i].items || [];
             for (var j = 0; j < items.length; j++) {
                 var it = items[j];
-                var k = it.kodeitem || it.namaitem;
-                if (!map[k]) { map[k] = { name: it.namaitem || it.kodeitem || '-', unit: it.satuan || '', qty: 0, total: 0, n: 0 }; keys.push(k); }
+                var k = (it.kodeitem || it.namaitem) + '|' + (it.satuan || '');
+                if (!map[k]) {
+                    map[k] = { name: it.namaitem || it.kodeitem || '-', unit: it.satuan || '', qty: 0, total: 0, n: 0 };
+                    rows.push(map[k]);
+                }
                 map[k].qty += num(it.jumlah);
                 map[k].total += num(it.total);
                 map[k].n++;
             }
         }
-        if (!keys.length) return '';
-        var rows = keys.map(function (k) { return map[k]; })
-            .sort(function (a, b) { return b.total - a.total; });
+        return rows;
+    }
+
+    // ---- full list of items sold, A–Z so an item is easy to find ----
+    var ITEMS_SHOWN = 10;
+    function itemsSoldCard(records) {
+        var rows = soldItems(records);
+        if (!rows.length) return '';
+        rows.sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
+        var sum = 0;
+        var list = rows.map(function (r, i) {
+            sum += r.total;
+            return '<li' + (i >= ITEMS_SHOWN ? ' class="more" hidden' : '') + '>' +
+                '<span class="k">' + esc(r.name) +
+                    '<small>' + fmtQty(r.qty) + ' ' + esc(r.unit.toLowerCase()) +
+                    (r.n > 1 ? ' · di ' + r.n + ' nota' : '') + '</small></span>' +
+                '<span class="v money">' + esc(fmtRp(r.total)) + '</span></li>';
+        }).join('');
+        var extra = rows.length - ITEMS_SHOWN;
+        // Item totals are before receipt-level discounts, so they can exceed the day's sales.
+        var disc = Math.round(sum - sumTotals(records));
+        return '<div class="card">' +
+            '<h2><span class="ico">📦</span>Daftar Barang Terjual</h2>' +
+            '<p class="lead">' + rows.length + ' macam barang, urut sesuai abjad (A–Z).</p>' +
+            '<ul class="rows" id="items-list">' + list + '</ul>' +
+            (extra > 0 ? '<button type="button" class="big-btn light" id="items-toggle" aria-expanded="false" ' +
+                'style="margin-top:8px;">Tampilkan ' + extra + ' barang lagi ▾</button>' : '') +
+            '<ul class="rows sum-line"><li><span class="k"><b>Total harga barang</b>' +
+                (disc >= 1 ? '<small>sebelum potongan harga ' + esc(fmtRp(disc)) + '</small>' : '') + '</span>' +
+                '<span class="v money">' + esc(fmtRp(sum)) + '</span></li></ul>' +
+        '</div>';
+    }
+    function wireItems() {
+        var btn = document.getElementById('items-toggle');
+        if (!btn) return;
+        var label = btn.textContent;
+        btn.addEventListener('click', function () {
+            var open = btn.getAttribute('aria-expanded') !== 'true';
+            var more = document.querySelectorAll('#items-list li.more');
+            for (var i = 0; i < more.length; i++) more[i].hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+            btn.textContent = open ? 'Sembunyikan ▴' : label;
+        });
+    }
+
+    // ---- best-selling items (computed from the receipts) ----
+    function topItemsCard(records) {
+        var rows = soldItems(records);
+        if (!rows.length) return '';
+        rows.sort(function (a, b) { return b.total - a.total; });
         var top = rows.slice(0, 5);
         var max = top[0].total || 1;
         var list = top.map(function (r, i) {
