@@ -586,6 +586,7 @@
         html.push(paymentCard(records, data.paymentBreakdown || []));
         html.push(editedCard(records));
         html.push(kasirCard(data.kasir || []));
+        html.push(adminCard(data));
         html.push(allNotaCard(records));
         html.push(
             '<div class="foot">' +
@@ -601,6 +602,7 @@
         wireHours(records);
         wireEdited(records);
         wireAll();
+        wireAdmin();
     }
 
     function heroCard(data, records, sum) {
@@ -1056,6 +1058,37 @@
             list.hidden = !open;
             btn.setAttribute('aria-expanded', String(open));
             btn.textContent = open ? 'Sembunyikan nota ▴' : 'Tampilkan semua nota ▾';
+            if (!open) backToCard(btn);
+        });
+    }
+
+    // ---- excluded transactions (e.g. ADMIN), shown on demand ----
+    // These are NOT counted in the report totals. send_report.js puts their full
+    // detail in data.excludedRecords so they can be inspected here.
+    function adminCard(data) {
+        var recs = data.excludedRecords || [];
+        var who = data.excludedUser || 'ADMIN';
+        if (!recs.length) return '';
+        return '<div class="card">' +
+            '<h2><span class="ico">🔎</span>Transaksi ' + esc(who) + '</h2>' +
+            '<p class="lead"><b>' + recs.length + ' nota</b> atas nama ' + esc(who) +
+                ' · total ' + esc(fmtRp(sumTotals(recs))) +
+                '. Nota ini <b>tidak dihitung</b> dalam total laporan di atas.</p>' +
+            '<button type="button" class="big-btn light" id="admin-toggle" aria-expanded="false">' +
+                'Lihat detail transaksi ' + esc(who) + ' ▾</button>' +
+            '<div id="admin-list" hidden>' + recs.map(notaHtml).join('') + '</div>' +
+        '</div>';
+    }
+    function wireAdmin() {
+        var btn = document.getElementById('admin-toggle');
+        var list = document.getElementById('admin-list');
+        if (!btn) return;
+        var label = btn.textContent;
+        btn.addEventListener('click', function () {
+            var open = list.hidden;
+            list.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+            btn.textContent = open ? 'Sembunyikan ▴' : label;
             if (!open) backToCard(btn);
         });
     }
