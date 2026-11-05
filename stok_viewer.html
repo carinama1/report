@@ -75,10 +75,11 @@
   .seg{display:flex;gap:6px;margin:10px 0 2px}
   .seg button{flex:1;min-height:44px;border:2px solid var(--brand);border-radius:10px;background:#fff;color:var(--brand);font-weight:700;font-size:.8em}
   .seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.swbar{display:flex;gap:8px;max-width:720px;margin:0 auto;padding:4px 16px 10px}.sw{flex:1;min-height:42px;border:2px solid rgba(255,255,255,.55);border-radius:10px;background:transparent;color:#fff;font-weight:700;font-size:.85em;cursor:pointer}.sw[aria-pressed="true"]{background:#fff;color:var(--brand)}
 </style>
 </head>
 <body>
-<div class="topbar"><div class="in"><b id="store-name">Laporan Stok</b><span>Laporan Stok — Barang Menipis</span></div></div>
+<div class="topbar"><div class="in"><b>CEK STOK BARANG</b><span id="store-name">TOKO PLOSO</span></div><div class="swbar"><button type="button" class="sw" data-store="0" aria-pressed="true">TOKO PLOSO</button><button type="button" class="sw" data-store="1" aria-pressed="false">TOKO BALEHARJO</button></div></div>
 <div class="wrap">
   <div class="card hero">
     <div class="day">📅 <span id="tgl"></span></div>
@@ -106,7 +107,7 @@
     var STORE=DATA.store||'TOKO', WA_NUMBER=String(DATA.waNumber||'6281233476375');
     document.getElementById('store-name').textContent=STORE;
     document.getElementById('tgl').textContent=fmtDate(DATA.reportDate);
-    document.title=STORE+' - Stok Menipis';
+    document.title='CEK STOK BARANG - '+STORE;
     var data=(DATA.items||[]).map(function(d){return {kode:String(d.kode),nama:d.nama,sat:d.sat,stok:parseFloat(d.stok),t30:parseFloat(d.t30),habis:parseFloat(d.habis),status:d.status};});
 
     var hampir=data.filter(function(d){return String(d.status).indexOf('hampir')===0;});
@@ -163,13 +164,24 @@
     document.getElementById('foot').innerHTML='Catatan: daftar dihitung dari kecepatan penjualan 1 bulan (30 hari) terakhir vs stok sekarang. Stok minus = catatan barang masuk belum lengkap. Total '+(hampir.length+habis.length)+' barang.<br>Dibuat otomatis oleh iPOS Reporter.';
   }
 
+  var STORES=[
+    {name:'TOKO PLOSO', url:'https://raw.githubusercontent.com/carinama1/report/main/reports-ploso/stok.json'},
+    {name:'TOKO BALEHARJO', url:'https://raw.githubusercontent.com/carinama1/report/main/reports/stok.json'}
+  ];
   function showErr(msg){document.getElementById('out').innerHTML='<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:40px">⚠️</div><p>'+esc(msg)+'</p></div>';}
-  var mm=/[?&]url=([^&#]+)/.exec(location.search);
-  var embed=(document.getElementById('data').textContent||'').replace(/^\s+|\s+$/g,'');
-  if(mm){document.getElementById('out').innerHTML='<div class="card" style="text-align:center;padding:40px">Memuat...</div>';
-    fetch(decodeURIComponent(mm[1]),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(function(t){boot(JSON.parse(t));}).catch(function(e){showErr('Gagal memuat laporan. '+e.message);});
-  }else if(embed){try{boot(JSON.parse(embed));}catch(e){showErr('Data rusak.');}}
-  else{showErr('Tidak ada data. Buka lewat link laporan.');}
+  function loadStore(idx){
+    var btns=document.querySelectorAll('.sw');
+    for(var i=0;i<btns.length;i++) btns[i].setAttribute('aria-pressed', String(i===idx));
+    document.getElementById('store-name').textContent=STORES[idx].name;
+    document.getElementById('fab').className='';
+    document.getElementById('out').innerHTML='<div class="card" style="text-align:center;padding:40px">Memuat '+esc(STORES[idx].name)+'...</div>';
+    fetch(STORES[idx].url+'?t='+(new Date().getTime()),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(function(t){boot(JSON.parse(t));}).catch(function(e){showErr('Gagal memuat '+STORES[idx].name+'. '+e.message);});
+  }
+  var sws=document.querySelectorAll('.sw');
+  for(var si=0;si<sws.length;si++){ (function(b){ b.addEventListener('click',function(){ loadStore(parseInt(b.getAttribute('data-store'),10)); }); })(sws[si]); }
+  var mm=/[?&]url=([^&#]+)/.exec(location.search), start=0;
+  if(mm){ var u=decodeURIComponent(mm[1]); for(var j=0;j<STORES.length;j++){ if(u.indexOf(STORES[j].url)>=0){ start=j; break; } } }
+  loadStore(start);
 })();
 </script>
 </body>
