@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Laporan Stok Menipis</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f5f58">
+<style>
+  :root{
+    --bg:#f3f1ec; --card:#fff; --ink:#1a1a1a; --soft:#5a5a52; --line:#ddd8cf;
+    --brand:#0f5f58; --brand-soft:#e2f1ee;
+    --red:#a31515; --red-bg:#fdecea; --org:#b4530a; --org-bg:#fdefe2;
+    --amb:#8a6d00; --amb-bg:#fbf4da; --blk:#333; --blk-bg:#efece6;
+    --fs:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;font-size:var(--fs);line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px 110px}
+  .topbar{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .topbar .in{max-width:720px;margin:0 auto;padding:12px 16px}
+  .topbar b{display:block;font-size:1.15em;line-height:1.2}
+  .topbar span{display:block;font-size:.8em;opacity:.9}
+  .card{background:var(--card);border-radius:18px;padding:18px;margin-top:16px;border:1px solid var(--line)}
+  .hero{background:var(--brand);color:#fff;border:0;text-align:center;padding:22px 18px}
+  .hero .day{font-size:.95em;opacity:.95}
+  .hero h1{margin:6px 0 4px;font-size:1.35em}
+  .hero .lead{font-size:.85em;opacity:.9;margin:0}
+  .stats{display:flex;gap:12px;margin-top:16px}
+  .stat{flex:1;background:var(--card);border-radius:14px;padding:14px 10px;border:1px solid var(--line);text-align:center}
+  .stat b{display:block;font-size:1.9em;line-height:1.05}
+  .stat.red b{color:var(--red)} .stat.blk b{color:var(--blk)}
+  .stat span{font-size:.78em;color:var(--soft)}
+  h2.sec{margin:26px 4px 2px;font-size:1.05em;display:flex;align-items:center;gap:8px}
+  .sec small{display:block;font-weight:400;color:var(--soft);font-size:.8em;margin:2px 4px 0}
+  ul.list{list-style:none;margin:10px 0 0;padding:0}
+  ul.list li{display:block;background:var(--card);border:1px solid var(--line);border-left:7px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:9px}
+  li.r{border-left-color:var(--red)} li.o{border-left-color:var(--org)} li.a{border-left-color:var(--amb)} li.k{border-left-color:var(--blk)}
+  .nm2{font-weight:700;font-size:1.05em;line-height:1.25;margin-bottom:9px}
+  .mx{display:flex;gap:10px}
+  .m{flex:1;background:var(--bg);border-radius:12px;padding:8px 6px;text-align:center}
+  .m .ml{display:block;font-size:.98em;font-weight:600;color:var(--soft);margin-bottom:3px}
+  .m .mv{display:block;font-size:1.7em;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+  .m .mu{font-size:.72em;color:var(--soft)}
+  .mv.sold{color:var(--brand)}
+  .mv.r{color:var(--red)} .mv.o{color:var(--org)} .mv.a{color:var(--amb)} .mv.k{color:var(--blk)}
+  .flt{display:flex;flex-direction:column;gap:8px;margin:14px 2px 4px;font-size:1.05em}
+  .flt label{font-weight:600;color:var(--ink)}
+  .flt label b{color:var(--brand);font-size:1.2em}
+  .flt input[type=range]{width:100%;height:48px;cursor:pointer;-webkit-appearance:none;appearance:none;background:transparent;--pct:100%}
+  .flt input[type=range]::-webkit-slider-runnable-track{height:16px;border-radius:8px;background:linear-gradient(90deg,var(--brand) var(--pct),var(--brand-soft) var(--pct))}
+  .flt input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:42px;height:42px;border-radius:50%;background:var(--brand);border:4px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.35);margin-top:-13px}
+  .flt input[type=range]::-moz-range-track{height:16px;border-radius:8px;background:var(--brand-soft)}
+  .flt input[type=range]::-moz-range-progress{height:16px;border-radius:8px;background:var(--brand)}
+  .flt input[type=range]::-moz-range-thumb{width:42px;height:42px;border-radius:50%;background:var(--brand);border:4px solid #fff}
+  .hint{margin:16px 2px 0;background:var(--amb-bg);color:var(--amb);border-radius:12px;padding:11px 14px;font-size:.95em;font-weight:600}
+  .hd{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .hd .nm2{flex:1;margin:0}
+  .pick{flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:3px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:1.05em}
+  ul.list li{cursor:pointer}
+  li.sel{border-color:var(--brand);background:var(--brand-soft)}
+  li.sel .pick{background:var(--brand);border-color:var(--brand)}
+  #fab{position:fixed;left:0;right:0;bottom:0;display:none;justify-content:center;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 60%,rgba(243,241,236,0));pointer-events:none}
+  #fab.show{display:flex}
+  .fab-in{pointer-events:auto;max-width:688px;width:100%;display:flex;gap:10px}
+  #fab-btn{flex:1;min-height:60px;border:0;border-radius:14px;background:#25d366;color:#fff;font-weight:800;font-size:1.05em;box-shadow:0 5px 16px rgba(0,0,0,.28)}
+  #fab-clear{flex:0 0 auto;min-height:60px;padding:0 18px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--soft);font-weight:700;font-size:.95em;box-shadow:0 5px 16px rgba(0,0,0,.18)}
+  #fab button:active{filter:brightness(.94)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72em;font-weight:700}
+  .more{margin-top:10px;text-align:center;color:var(--soft);font-size:.82em}
+  .foot{margin-top:26px;color:var(--soft);font-size:.78em;text-align:center;line-height:1.6}
+  .tabs{display:flex;gap:8px;margin-top:4px}
+  .tabs button{flex:1;min-height:46px;border:2px solid var(--brand);border-radius:12px;background:#fff;color:var(--brand);font-weight:700;font-size:.85em}
+  .tabs button[aria-pressed="true"]{background:var(--brand);color:#fff}
+  .seg{display:flex;gap:6px;margin:10px 0 2px}
+  .seg button{flex:1;min-height:44px;border:2px solid var(--brand);border-radius:10px;background:#fff;color:var(--brand);font-weight:700;font-size:.8em}
+  .seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="in"><b id="store-name">Laporan Stok</b><span>Laporan Stok — Barang Menipis</span></div></div>
+<div class="wrap">
+  <div class="card hero">
+    <div class="day">📅 <span id="tgl"></span></div>
+    <h1>Barang yang Perlu Diisi Ulang</h1>
+    <p class="lead">Berdasarkan penjualan 1 bulan (30 hari) terakhir</p>
+  </div>
+  <div class="stats">
+    <div class="stat red"><b id="c-hampir">0</b><span>stok menipis<br>(≤ 14 hari lagi habis)</span></div>
+    <div class="stat blk"><b id="c-habis">0</b><span>stok habis / minus<br>(masih laku)</span></div>
+  </div>
+  <div class="hint">👆 Ketuk barang yang mau direstok, lalu tekan tombol hijau untuk kirim ke WhatsApp.</div>
+  <div id="out"></div>
+  <div class="foot" id="foot"></div>
+</div>
+<div id="fab"><div class="fab-in"><button type="button" id="fab-clear">✕ Hapus</button><button type="button" id="fab-btn">📲 Kirim <span id="fab-n">0</span> ke WhatsApp</button></div></div>
+<script id="data" type="application/json"></script>
+<script>
+(function(){
+  var BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function fmtDate(iso){var m=/(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));if(!m)return iso||'';var d=new Date(+m[1],+m[2]-1,+m[3]);return HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear();}
+
+  function boot(DATA){
+    var STORE=DATA.store||'TOKO', WA_NUMBER=String(DATA.waNumber||'6281233476375');
+    document.getElementById('store-name').textContent=STORE;
+    document.getElementById('tgl').textContent=fmtDate(DATA.reportDate);
+    document.title=STORE+' - Stok Menipis';
+    var data=(DATA.items||[]).map(function(d){return {kode:String(d.kode),nama:d.nama,sat:d.sat,stok:parseFloat(d.stok),t30:parseFloat(d.t30),habis:parseFloat(d.habis),status:d.status};});
+
+    var hampir=data.filter(function(d){return String(d.status).indexOf('hampir')===0;});
+    var habis=data.filter(function(d){return String(d.status).indexOf('hampir')!==0;});
+    document.getElementById('c-hampir').textContent=hampir.length;
+    document.getElementById('c-habis').textContent=habis.length;
+
+    var picked={}, byKode={};
+    data.forEach(function(d){ byKode[d.kode]=d; });
+    function updateFAB(){var n=0;for(var k in picked)n++;document.getElementById('fab-n').textContent=n;document.getElementById('fab').className=n>0?'show':'';}
+    function sendWA(){
+      var lines=['*PERLU RESTOK - '+STORE+'*', document.getElementById('tgl').textContent, ''];
+      var i=0; for(var k in picked){var d=picked[k];i++;lines.push(i+'. '+d.nama+' - sisa '+num(d.stok)+' '+(d.sat||'').toLowerCase()+' (laku '+num(d.t30)+'/bln)');}
+      lines.push(''); lines.push('(dari Laporan Stok Menipis)');
+      window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(lines.join('\n')),'_blank');
+    }
+    function num(n){return (Math.round(n*100)/100).toString().replace('.',',');}
+    function cls(h){return h<=3?'r':h<=7?'o':'a';}
+    function cell(label,val,c,unit){return '<div class="m"><span class="ml">'+label+'</span><b class="mv '+c+'">'+num(val)+'</b><span class="mu">'+esc(unit)+'</span></div>';}
+    function cardHead(d){return '<div class="hd"><div class="nm2">'+esc(d.nama)+'</div><div class="pick">'+(picked[d.kode]?'✓':'')+'</div></div>';}
+    function rowHampir(d){var k=cls(d.habis),u=(d.sat||'').toLowerCase();return '<li class="'+k+(picked[d.kode]?' sel':'')+'" data-kode="'+esc(d.kode)+'">'+cardHead(d)+'<div class="mx">'+cell('Terjual 1 bln',d.t30,'sold',u)+cell('Sisa stok',d.stok,k,u)+'</div></li>';}
+    function rowHabis(d){var u=(d.sat||'').toLowerCase();return '<li class="k'+(picked[d.kode]?' sel':'')+'" data-kode="'+esc(d.kode)+'">'+cardHead(d)+'<div class="mx">'+cell('Terjual 1 bln',d.t30,'sold',u)+cell('Sisa stok',d.stok,'k',u)+'</div></li>';}
+
+    var SHOW=25, out=document.getElementById('out');
+    var SORTS={
+      stok:{label:'Stok tersedikit',cmp:function(a,b){return a.stok-b.stok||b.t30-a.t30;}},
+      terjual:{label:'Paling laku',cmp:function(a,b){return b.t30-a.t30||a.stok-b.stok;}},
+      nama:{label:'Nama A-Z',cmp:function(a,b){var x=a.nama.toLowerCase(),y=b.nama.toLowerCase();return x<y?-1:x>y?1:0;}}
+    };
+    var MAXL1=Math.max(1,Math.ceil(hampir.reduce(function(m,d){return d.stok>m?d.stok:m;},0)));
+    var SECS={
+      l1:{title:'🔴 Stok Menipis',sub:'Stok masih ada tapi tinggal sedikit.',items:hampir,rowFn:rowHampir,sort:'stok',maxStock:null,filter:true,maxVal:MAXL1},
+      l2:{title:'⚫ Stok Habis / Minus',sub:'Stok tercatat 0 atau minus, tapi masih laku.',items:habis,rowFn:rowHabis,sort:'terjual',maxStock:null,filter:false}
+    };
+    function secHTML(id){var s=SECS[id],seg='';for(var k in SORTS)seg+='<button type="button" data-sec="'+id+'" data-sort="'+k+'" aria-pressed="'+(k===s.sort)+'">'+SORTS[k].label+'</button>';var flt=s.filter?'<div class="flt"><label>Stok maksimal: <b id="'+id+'-val">Semua</b></label><input type="range" class="fin" data-sec="'+id+'" min="0" max="'+s.maxVal+'" step="1" value="'+s.maxVal+'"></div>':'';return '<h2 class="sec">'+s.title+'</h2><small class="sec">'+s.sub+'</small><div class="seg">'+seg+'</div>'+flt+'<ul class="list" id="'+id+'"></ul><div class="more" id="'+id+'-more"></div>';}
+    function drawSec(id){var s=SECS[id],arr=s.items.slice();if(s.maxStock!=null&&!isNaN(s.maxStock))arr=arr.filter(function(d){return d.stok<=s.maxStock;});arr.sort(SORTS[s.sort].cmp);document.getElementById(id).innerHTML=arr.length?arr.slice(0,SHOW).map(s.rowFn).join(''):'<li class="k" style="text-align:center;color:var(--soft)">Tidak ada barang.</li>';document.getElementById(id+'-more').textContent=arr.length>SHOW?'+ '+(arr.length-SHOW)+' barang lagi':'';var btns=out.querySelectorAll('button[data-sec="'+id+'"]');for(var i=0;i<btns.length;i++)btns[i].setAttribute('aria-pressed',String(btns[i].getAttribute('data-sort')===s.sort));}
+    out.innerHTML=secHTML('l1')+secHTML('l2');
+    out.addEventListener('click',function(e){
+      var b=e.target;
+      if(b.tagName==='BUTTON'&&b.getAttribute('data-sort')){SECS[b.getAttribute('data-sec')].sort=b.getAttribute('data-sort');drawSec(b.getAttribute('data-sec'));return;}
+      var li=b;while(li&&li!==out&&!(li.tagName==='LI'&&li.getAttribute('data-kode')))li=li.parentNode;
+      if(li&&li.getAttribute&&li.getAttribute('data-kode')){var kode=li.getAttribute('data-kode');if(picked[kode])delete picked[kode];else picked[kode]=byKode[kode];drawSec(li.parentNode.id);updateFAB();}
+    });
+    out.addEventListener('input',function(e){
+      if(!e.target.className||String(e.target.className).indexOf('fin')<0)return;
+      var id=e.target.getAttribute('data-sec'),v=parseFloat(e.target.value),mx=SECS[id].maxVal,atMax=v>=mx;
+      SECS[id].maxStock=atMax?null:v;e.target.style.setProperty('--pct',(mx>0?(v/mx*100):100)+'%');
+      var lbl=document.getElementById(id+'-val');if(lbl)lbl.textContent=atMax?'Semua':('≤ '+v);drawSec(id);
+    });
+    drawSec('l1');drawSec('l2');
+    document.getElementById('fab-btn').addEventListener('click',sendWA);
+    document.getElementById('fab-clear').addEventListener('click',function(){picked={};drawSec('l1');drawSec('l2');updateFAB();});
+    updateFAB();
+    document.getElementById('foot').innerHTML='Catatan: daftar dihitung dari kecepatan penjualan 1 bulan (30 hari) terakhir vs stok sekarang. Stok minus = catatan barang masuk belum lengkap. Total '+(hampir.length+habis.length)+' barang.<br>Dibuat otomatis oleh iPOS Reporter.';
+  }
+
+  function showErr(msg){document.getElementById('out').innerHTML='<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:40px">⚠️</div><p>'+esc(msg)+'</p></div>';}
+  var mm=/[?&]url=([^&#]+)/.exec(location.search);
+  var embed=(document.getElementById('data').textContent||'').replace(/^\s+|\s+$/g,'');
+  if(mm){document.getElementById('out').innerHTML='<div class="card" style="text-align:center;padding:40px">Memuat...</div>';
+    fetch(decodeURIComponent(mm[1]),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(function(t){boot(JSON.parse(t));}).catch(function(e){showErr('Gagal memuat laporan. '+e.message);});
+  }else if(embed){try{boot(JSON.parse(embed));}catch(e){showErr('Data rusak.');}}
+  else{showErr('Tidak ada data. Buka lewat link laporan.');}
+})();
+</script>
+</body>
+</html>
